@@ -5,6 +5,9 @@
 Build with: uv run pyinstaller --clean --noconfirm packaging/wowfish.spec
 """
 
+import os
+import sys
+
 from PyInstaller.utils.hooks import collect_data_files, copy_metadata
 
 datas, binaries, hiddenimports = [], [], []
@@ -17,6 +20,9 @@ datas += [("../src/wowfish/assets", "wowfish/assets")]
 # PyInstaller can't see imports made from C.
 hiddenimports += ["PIL._tkinter_finder"]
 EXCLUDES = ["matplotlib", "torch", "torchvision"]
+# The logo on the Windows executables (PyInstaller turns .ico into the exe icon; macOS and
+# Linux binaries carry no icon of their own).
+ICON = os.path.join(SPECPATH, "wowfish.ico") if sys.platform == "win32" else None
 
 a = Analysis(
     ["../src/wowfish/__main__.py"],
@@ -41,6 +47,7 @@ exe = EXE(
     strip=False,
     upx=False,
     console=True,
+    icon=ICON,
 )
 
 g = Analysis(
@@ -66,4 +73,5 @@ gui_exe = EXE(
     strip=False,
     upx=False,
     console=False,
+    icon=ICON,
 )

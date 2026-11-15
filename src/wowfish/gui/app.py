@@ -24,6 +24,7 @@ class App:
             themename=theme.THEME, title=f"wowfish {__version__}", minsize=(1000, 760)
         )
         theme.apply_styles(tb.Style())
+        self._set_icon()
         bar = tb.Frame(self.root, padding=(16, 12, 16, 0))
         bar.pack(fill="x")
         tb.Label(bar, text="wowfish", style="Brand.TLabel").pack(side="left")
@@ -40,6 +41,18 @@ class App:
         self.bar: MiniBar | None = None
         self._was_running = False
         self._after = self.root.after(POLL_MS, self._tick)
+
+    def _set_icon(self) -> None:
+        """The logo in the title bar and taskbar, for this window and the ones it opens."""
+        import tkinter as tk
+
+        from wowfish.assets import app_icon_path
+
+        try:
+            self._icon = tk.PhotoImage(file=str(app_icon_path()))
+            self.root.iconphoto(True, self._icon)
+        except (tk.TclError, OSError):  # a missing or unreadable icon is only cosmetic
+            self._icon = None
 
     def tick(self) -> None:
         view = self.p.poll()

@@ -28,7 +28,7 @@ train = []
 wowfish = "wowfish.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/rsamf/wow-fishing-forever"
+Homepage = "https://github.com/krasovsky22/WowFishingAssist"
 
 [dependency-groups]
 dev = [

@@ -25,5 +25,10 @@ def clip_path(name: str) -> Path:
     return asset_dir() / "clips" / f"{name}.wav"
 
 
+def app_icon_path() -> Path:
+    """The app's logo as a 256 px PNG, for the window icon."""
+    return asset_dir() / "icon.png"
+
+
 def default_config_path() -> Path:
     return asset_dir() / "default_config"
