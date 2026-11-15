@@ -229,9 +229,12 @@ def _read_text(path: Path) -> str:
     (Windows, non-ASCII values such as a device name) is still read."""
     raw = path.read_bytes()
     try:
-        return raw.decode("utf-8")
+        text = raw.decode("utf-8")
     except UnicodeDecodeError:
-        return raw.decode(locale.getpreferredencoding(False), errors="replace")
+        text = raw.decode(locale.getpreferredencoding(False), errors="replace")
+    # As text mode would: a file written on Windows has CRLF endings, and writing them back
+    # through text mode would double the CR (\r\r\n), which TOML rejects.
+    return text.replace("\r\n", "\n")
 
 
 def save_config(cfg: Config, path: Path | None = None) -> None:
@@ -251,12 +254,14 @@ def save_config(cfg: Config, path: Path | None = None) -> None:
     for section, values in asdict(cfg).items():
         table = doc.get(section)
         if not isinstance(table, dict):
-            table = tomlkit.table()
-            doc[section] = table
+            table = None  # created only if a value in it has to be written
         for key, value in values.items():
-            current = table[key] if key in table else defaults[section][key]
+            current = table[key] if table is not None and key in table else defaults[section][key]
             current = current.unwrap() if hasattr(current, "unwrap") else current
             if value != current:
+                if table is None:
+                    table = tomlkit.table()
+                    doc[section] = table
                 table[key] = value
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_text(tomlkit.dumps(doc), encoding="utf-8")

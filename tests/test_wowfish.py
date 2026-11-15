@@ -750,3 +750,19 @@ def test_mini_bar_setting(tmp_path, monkeypatch):
 
 def p_config_text(home: Path) -> str:
     return (home / "config" / "config.toml").read_text(encoding="utf-8")
+
+
+def test_config_written_on_windows_round_trips(tmp_path):
+    """A config file with CRLF line endings (as Windows writes it) loads, saves, and loads
+    again; saving never doubles the CR, and adds no empty sections."""
+    from wowfish import config as config_module
+
+    path = tmp_path / "config.toml"
+    path.write_bytes(b'# mine\r\n[game]\r\ncast_key = "2"\r\n')
+    assert "\r" not in config_module._read_text(path)
+    cfg, _ = load_config(path)
+    save_config(replace(cfg, run=replace(cfg.run, cast_timeout_s=22.0)), path)
+    raw = path.read_bytes()
+    assert b"\r\r" not in raw and b"[vision]" not in raw and b"[gui]" not in raw
+    reloaded, _ = load_config(path)
+    assert reloaded.game.cast_key == "2" and reloaded.run.cast_timeout_s == 22.0
