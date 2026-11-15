@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import locale
 import os
 import re
 import tomllib
@@ -19,6 +20,9 @@ from wowfish.assets import default_config_path
 from wowfish.input.keys import is_supported_key
 
 _LINE_RE = re.compile(r"\(at line (\d+), column \d+\)")
+# run.cast_timeout_s: the hard limit on one cast, from the cast key press to the recast.
+CAST_TIMEOUT_MIN_S = 5.0
+CAST_TIMEOUT_MAX_S = 120.0
 
 
 class ConfigError(Exception):
@@ -194,7 +198,7 @@ def load_config(path: Path | None = None) -> tuple[Config, list[str]]:
     if not path.exists():
         return Config(game=GameConfig(), vision=VisionConfig(), audio=AudioConfig()), []
     try:
-        raw = tomllib.loads(path.read_text())
+        raw = tomllib.loads(_read_text(path))
     except tomllib.TOMLDecodeError as e:
         m = _LINE_RE.search(str(e))
         raise ConfigError(path, str(e), int(m.group(1)) if m else None) from e
@@ -213,9 +217,43 @@ def load_config(path: Path | None = None) -> tuple[Config, list[str]]:
     return cfg, warnings
 
 
+def _read_text(path: Path) -> str:
+    """The config file's text. UTF-8; a file an older release wrote in the locale's code page
+    (Windows, non-ASCII values such as a device name) is still read."""
+    raw = path.read_bytes()
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return raw.decode(locale.getpreferredencoding(False), errors="replace")
+
+
 def save_config(cfg: Config, path: Path | None = None) -> None:
+    """Write `cfg` into the config file, changing only the values that differ from what the
+    file says now (a missing line counts as its default). Comments, unknown keys, and lines
+    left out stay as they are. A missing or unparsable file starts over from default_config."""
     path = path or paths.config_file()
-    path.write_text(to_toml(cfg))
+    doc: tomlkit.TOMLDocument | None = None
+    if path.exists():
+        try:
+            doc = tomlkit.parse(_read_text(path))
+        except tomlkit.exceptions.ParseError:
+            doc = None
+    if doc is None:
+        doc = tomlkit.parse(default_config_path().read_text(encoding="utf-8"))
+    defaults = asdict(Config(game=GameConfig(), vision=VisionConfig(), audio=AudioConfig()))
+    for section, values in asdict(cfg).items():
+        table = doc.get(section)
+        if not isinstance(table, dict):
+            table = tomlkit.table()
+            doc[section] = table
+        for key, value in values.items():
+            current = table[key] if key in table else defaults[section][key]
+            current = current.unwrap() if hasattr(current, "unwrap") else current
+            if value != current:
+                table[key] = value
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(tomlkit.dumps(doc), encoding="utf-8")
+    os.replace(tmp, path)
 
 
 def _build_section(
@@ -263,7 +301,11 @@ def _validate(path: Path, cfg: Config) -> None:
     check(a.refractory_s >= 0.0, "audio.refractory_s", "must be 0 or positive")
     r = cfg.run
     check(r.icon_timeout_s > 0, "run.icon_timeout_s", "must be positive")
-    check(r.cast_timeout_s > 0, "run.cast_timeout_s", "must be positive")
+    check(
+        CAST_TIMEOUT_MIN_S <= r.cast_timeout_s <= CAST_TIMEOUT_MAX_S,
+        "run.cast_timeout_s",
+        f"must be between {CAST_TIMEOUT_MIN_S:g} and {CAST_TIMEOUT_MAX_S:g} seconds",
+    )
     check(r.loot_timeout_s > 0, "run.loot_timeout_s", "must be positive")
     check(r.pause_min_s >= 0, "run.pause_min_s", "must be 0 or positive")
     check(r.pause_min_s <= r.pause_max_s, "run.pause_min_s", "must not exceed run.pause_max_s")

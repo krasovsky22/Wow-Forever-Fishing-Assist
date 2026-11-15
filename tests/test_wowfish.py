@@ -5,11 +5,13 @@ system, or Tk is touched, so a failure means the code or the assets changed, not
 
 from __future__ import annotations
 
+import itertools
 import random
 import subprocess
 import sys
 import tomllib
 from contextlib import nullcontext
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -39,6 +41,7 @@ from wowfish.config import (
     load_config,
     save_config,
 )
+from wowfish.engine import events as ev
 from wowfish.engine.engine import FishingEngine, unsupported_platform
 from wowfish.engine.state import State
 from wowfish.errors import PermissionMissing
@@ -475,11 +478,12 @@ def _fish(
     minutes: float,
     game: GameConfig | None = None,
     pond: _Pond | None = None,
+    run: RunConfig | None = None,
 ) -> tuple[_Pond, list[str]]:
     """Fish for `minutes`, or until the session limit in `game` stops the engine."""
     pond = pond or _Pond()
     cfg = Config(game=game or GameConfig(), vision=VisionConfig(), audio=AudioConfig(),
-                 behavior=behavior)  # fmt: skip
+                 run=run or RunConfig(), behavior=behavior)  # fmt: skip
     engine = FishingEngine(
         cfg, pond.window,
         capturer=pond, input_device=pond, audio_source=pond, detector=pond, matcher=pond,
@@ -561,3 +565,116 @@ def test_session_limit_quits_the_game_only_when_asked():
     pond, lines = _fish(BehaviorConfig(), 5, game, pond)
     assert pond.pressed == []
     assert any("left it running" in line for line in lines)
+
+
+class _AwayPond(_Pond):
+    """A pond the player alt-tabs away from: the game is not focused from `away[0]` to
+    `away[1]` seconds into the session."""
+
+    def __init__(self, away: tuple[float, float], **kw) -> None:
+        super().__init__(**kw)
+        self.away = away
+
+    def is_game_focused(self, window) -> bool:
+        return not self.away[0] <= self.t < self.away[1]
+
+
+def _casts(pond: _Pond) -> list[float]:
+    return [t for t, k, _ in pond.pressed if k == "1"]
+
+
+def test_a_cast_that_goes_nowhere_is_recast_after_cast_timeout():
+    """No splash ever comes and the tracker keeps seeing the bobber, so nothing but the cast's
+    hard limit ends a cast: every cast is followed by the next one run.cast_timeout_s later
+    (plus the random pause), and Interact is never pressed."""
+    run = RunConfig(cast_timeout_s=10.0)
+    pond, lines = _fish(BehaviorConfig(), 2, pond=_Pond(bite_after_s=1e9), run=run)
+    casts = _casts(pond)
+    assert len(casts) >= 8 and "f" not in {k for _, k, _ in pond.pressed}
+    gaps = [b - a for a, b in itertools.pairwise(casts)]
+    assert all(10.0 < g <= 10.0 + run.pause_max_s + 0.1 for g in gaps)
+    assert sum("No splash within 10 s" in line for line in lines) >= len(gaps)
+
+
+def test_a_bite_just_before_the_limit_still_gets_looted():
+    run = RunConfig(cast_timeout_s=10.0)
+    pond, lines = _fish(BehaviorConfig(), 1, pond=_Pond(bite_after_s=9.9), run=run)
+    assert "f" in {k for _, k, _ in pond.pressed}
+    assert not any("No splash within" in line for line in lines)
+
+
+def test_a_cast_that_runs_out_while_paused_is_recast_on_resume():
+    """The game's cast goes on while the player is away, so a cast whose limit passed in the
+    meantime is recast as soon as the game has focus again."""
+    run = RunConfig(cast_timeout_s=10.0)
+    pond, lines = _fish(BehaviorConfig(), 0.5, pond=_AwayPond((2, 20), bite_after_s=1e9), run=run)
+    after = [t for t in _casts(pond) if t >= 20]
+    assert after and after[0] <= 20 + run.pause_max_s + 0.2
+    assert not [t for t in _casts(pond) if 2 <= t < 20]
+    assert any("ran out while the game was not focused" in line for line in lines)
+
+
+def test_a_short_pause_does_not_cost_the_cast():
+    """Away for 3 s with the cast well inside its limit: the bot carries on and loots the
+    bite that comes after the pause."""
+    run = RunConfig(cast_timeout_s=10.0)
+    pond, lines = _fish(BehaviorConfig(), 0.2, pond=_AwayPond((2, 5), bite_after_s=8), run=run)
+    first_interact = next(t for t, k, _ in pond.pressed if k == "f")
+    assert 8 <= first_interact < 9
+    assert "Resumed" in lines and not any("No splash within" in line for line in lines)
+
+
+def test_a_bite_heard_just_before_a_pause_is_looted_on_a_quick_return():
+    """The splash comes, then focus goes during the reaction delay. Back within 1.5 s: Interact
+    is pressed at once. Back later: that bite is let go."""
+    behavior = BehaviorConfig(reaction_min_ms=200, reaction_max_ms=200)
+    quick = _AwayPond((3.1, 3.6), bite_after_s=3)
+    pond, _ = _fish(behavior, 0.1, pond=quick)
+    first_interact = next(t for t, k, _ in pond.pressed if k == "f")
+    assert 3.6 <= first_interact < 3.8
+
+    slow = _AwayPond((3.1, 6.0), bite_after_s=3)
+    pond, _ = _fish(behavior, 0.1, pond=slow)
+    assert not [t for t, k, _ in pond.pressed if k == "f" and t < 6.0 + 0.1]
+
+
+def test_cast_timeout_is_checked_and_saved_without_losing_the_file(tmp_path):
+    """run.cast_timeout_s must be 5-120 s. Saving a change rewrites only that line: comments,
+    unknown keys, and lines the user left out stay as they were."""
+    path = tmp_path / "config.toml"
+    for bad in (4.9, 121):
+        path.write_text(f"[run]\ncast_timeout_s = {bad}\n", encoding="utf-8")
+        try:
+            load_config(path)
+        except Exception as e:
+            assert "run.cast_timeout_s" in str(e)
+        else:
+            raise AssertionError(f"{bad} was accepted")
+    for good in (5, 120):
+        path.write_text(f"[run]\ncast_timeout_s = {good}\n", encoding="utf-8")
+        assert load_config(path)[0].run.cast_timeout_s == good
+
+    text = '# mine\n[game]\ncast_key = "2"  # my key\nextra = 1\n\n[audio]\ndevice = "Динамики"\n'
+    path.write_text(text, encoding="utf-8")
+    cfg, _ = load_config(path)
+    save_config(replace(cfg, run=replace(cfg.run, cast_timeout_s=22.0)), path)
+    saved = path.read_text(encoding="utf-8")
+    assert saved.startswith(text) and "cast_timeout_s = 22.0" in saved
+    assert "interact_key" not in saved  # still at its default, so still left out
+    assert load_config(path)[0].run.cast_timeout_s == 22.0
+
+
+def test_cast_timeout_from_the_setup_tab_and_its_log_line(tmp_path, monkeypatch):
+    monkeypatch.setenv("WOWFISH_HOME", str(tmp_path))
+    p = Presenter(build_engine=lambda *a, **k: None, list_devices=lambda: [],
+                  find_window=lambda *a: None)  # fmt: skip
+    assert p.save_cast_timeout("22") == 22.0 and p.cfg.run.cast_timeout_s == 22.0
+    for bad in ("4", "abc", "121"):
+        try:
+            p.save_cast_timeout(bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"{bad!r} was accepted")
+    line = describe(ev.Timeout(1.0, "cast", 22.0, "nothing matched"))
+    assert line == "No catch within 22 s of casting; nothing matched; recasting"

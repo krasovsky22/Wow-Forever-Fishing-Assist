@@ -56,6 +56,8 @@ def describe(event: ev.Event) -> str:
             return f"No splash within {s:g} s; {detail}; recasting"
         case ev.Timeout(what="bite", after_s=s):
             return f"No splash within {s:g} s; recasting"
+        case ev.Timeout(what="cast", after_s=s, detail=detail):
+            return f"No catch within {s:g} s of casting; {detail or 'giving up'}; recasting"
         case ev.Listening(best_clip=clip, best_score=score, threshold=threshold):
             which = f" ({clip})" if clip else ""  # no clip: everything so far was silence
             return f"Best match so far {max(score, 0.0):.2f}{which}; threshold {threshold:.2f}"
@@ -219,6 +221,25 @@ class Presenter:
             save_config(replace(self.cfg, game=replace(self.cfg.game, session_minutes=minutes)))
             self.reload()
 
+    def save_cast_timeout(self, value: str) -> float:
+        """Check and save "Recast after" from the Setup tab (run.cast_timeout_s); the bot uses
+        it from the next Start. Raises ValueError with a plain message when it is out of range."""
+        from wowfish.config import CAST_TIMEOUT_MAX_S, CAST_TIMEOUT_MIN_S
+
+        try:
+            seconds = float(value)
+        except ValueError:
+            raise ValueError(f"{value.strip() or 'empty'} is not a number") from None
+        if not CAST_TIMEOUT_MIN_S <= seconds <= CAST_TIMEOUT_MAX_S:
+            raise ValueError(
+                f"must be between {CAST_TIMEOUT_MIN_S:g} and {CAST_TIMEOUT_MAX_S:g} seconds"
+            )
+        self.reload()  # a running bot may have saved a calibration since this was loaded
+        if seconds != self.cfg.run.cast_timeout_s:
+            save_config(replace(self.cfg, run=replace(self.cfg.run, cast_timeout_s=seconds)))
+            self.reload()
+        return seconds
+
     def audio_devices(self) -> list[Any]:
         """The game's own audio first (default), then the loopback monitors.
 
@@ -237,6 +258,7 @@ class Presenter:
         return next((d for d in found if d.is_default), found[0] if found else None)
 
     def save_audio_device(self, selector: str) -> None:
+        self.reload()  # a running bot may have saved a calibration since this was loaded
         if selector == self._game:
             audio = replace(self.cfg.audio, capture="game")
         else:
@@ -393,7 +415,7 @@ class Presenter:
             case ev.BiteHeard(clip=clip, score=score):
                 self.trace.bite = (event.t, clip, score)
                 self.trace.version += 1
-            case ev.Timeout(what="bite"):
+            case ev.Timeout(what="bite" | "cast"):
                 self.trace.timed_out = True
                 self.trace.version += 1
             case ev.Stats():

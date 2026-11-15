@@ -134,6 +134,8 @@ Or run it from terminal:
 
 While the bot is running, keep the water in view and the game client in focus.
 
+If a cast goes nowhere (no splash heard, or the bobber is never lost from sight), the bot gives up and recasts `cast_timeout_s` seconds after casting (30 by default, 5-120), whatever it is doing. Set it on the Setup tab (*Recast after*), as `cast_timeout_s` in the `[run]` section of the config file, or for one run with `wowfish run --recast-after S`. Pick 1-2 s more than a cast lasts in the game.
+
 To vary the bot's rhythm, fill in the `[behavior]` section of the config file (`wowfish config --path`): breaks after a stretch of fishing, a reaction delay before Interact, the odd bite let go on purpose, uneven key holds, and a jump before the occasional cast. It is all off by default.
 
 To close the game when the time limit runs out, make a macro with `/quit`, put it on an action bar key, and enter that key as the Quit key on the Setup tab (`quit_key` in the config file). Once the session is over, the bot lets the cast in hand finish, presses the key, and waits up to 30 s for the game window to close (away from an inn, logging out takes 20 s). If the window stays, it presses again, three times at most.
@@ -143,7 +145,7 @@ To close the game when the time limit runs out, make a macro with `/quit`, put i
 | command | what it does |
 |---|---|
 | `wowfish gui` | The setup and fishing window |
-| `wowfish run [--minutes N] [--record-audio WAV]` | Fish from the terminal until Ctrl-C or the session limit; optionally save everything heard |
+| `wowfish run [--minutes N] [--recast-after S] [--record-audio WAV]` | Fish from the terminal until Ctrl-C or the session limit; optionally override the recast time or save everything heard |
 | `wowfish doctor` | Check OS, display, OpenCV, audio devices, game window, input, calibration, config |
 | `wowfish calibrate SHOT.png [--save]` | Measure the interact icon's on-screen size from a screenshot |
 | `wowfish watch --live` | Show what the matcher sees: phase, score, position, milliseconds per frame |

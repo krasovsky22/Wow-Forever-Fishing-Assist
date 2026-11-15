@@ -60,7 +60,7 @@ class Caught(Event):
 
 @dataclass(frozen=True)
 class Timeout(Event):
-    what: str  # "icon" | "bite" | "loot"
+    what: str  # "icon" | "bite" | "loot" | "cast" (the cast's hard limit, outside WAIT_BITE)
     after_s: float
     detail: str = ""  # for "bite": the best match heard while waiting, so a miss explains itself
 

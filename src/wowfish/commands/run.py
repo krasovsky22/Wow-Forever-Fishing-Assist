@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import queue
 import time
+from dataclasses import replace
 from pathlib import Path
 from typing import Annotated
 
@@ -12,6 +13,7 @@ from loguru import logger
 
 from wowfish.audio import AudioUnavailable
 from wowfish.commands._common import fail, load_config_or_fail
+from wowfish.config import CAST_TIMEOUT_MAX_S, CAST_TIMEOUT_MIN_S
 from wowfish.engine import events as ev
 from wowfish.engine.engine import build_engine
 from wowfish.engine.thread import EngineThread
@@ -37,9 +39,18 @@ def run(
             help="Save everything the bot hears to this WAV when it stops (for `verify-bite`).",
         ),
     ] = None,
+    recast_after: float | None = typer.Option(
+        None,
+        "--recast-after",
+        min=CAST_TIMEOUT_MIN_S,
+        max=CAST_TIMEOUT_MAX_S,
+        help="Recast after this many seconds without a catch (default: run.cast_timeout_s).",
+    ),
 ) -> None:
     """Cast, find the bobber, hear the splash, press Interact, loot, repeat. Ctrl-C stops."""
     cfg = load_config_or_fail()
+    if recast_after is not None:
+        cfg = replace(cfg, run=replace(cfg.run, cast_timeout_s=recast_after))
     try:
         engine = build_engine(
             cfg,

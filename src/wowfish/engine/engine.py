@@ -46,6 +46,7 @@ JUMP_LANDING_S = (1.0, 1.5)  # Fishing cannot be cast mid-air; wait this long af
 QUIT_WAIT_S = 30.0  # away from an inn, /quit counts down 20 s before the game closes
 QUIT_TRIES = 3  # quit key presses before giving up on closing the game
 BUSY = (State.CASTING, State.WAIT_BITE, State.INTERACT)  # a cast in hand
+LATE_INTERACT_S = 1.5  # a bite heard just before a pause is still worth Interact this long after
 
 
 class FishingEngine:
@@ -103,8 +104,11 @@ class FishingEngine:
         self.started: float | None = None
         self._stop = False
         self._resume_state = State.IDLE
-        self._t_cast = 0.0
+        self._t_cast = 0.0  # the cast key press: the hard limit on this cast counts from here
+        self._t_look = 0.0  # when the icon search started; shifted by pauses, unlike _t_cast
         self._t_interact = 0.0
+        self._paused_at: float | None = None
+        self._pending_bite: tuple[float, Any] | None = None  # (heard at, bite) before a pause
         self._icon_xy: tuple[int, int] | None = None
         self._icon_size = 0
         self._misses = 0
@@ -162,15 +166,12 @@ class FishingEngine:
         focused = self.input.is_game_focused(self.window)
         if focused is False:
             if self.state is not State.PAUSED:
-                self._resume_state = self.state
-                self.state = State.PAUSED
-                self._emit(ev.Paused(self._t(), UNFOCUSED))
+                self._pause(now)
             self._drain_audio(now)
             self._sleep(SLEEP_SLICE_S)
             return
-        if self.state is State.PAUSED:
-            self.state = self._resume_state
-            self._emit(ev.Resumed(self._t(), self.state))
+        if self.state is State.PAUSED and self._resume(now):
+            return
 
         chunks = self._drain_audio(now)
         bites = []
@@ -179,6 +180,10 @@ class FishingEngine:
                 bites.extend(self.detector.feed(chunk))
             self._note_scores()
             self._send_scores(now, flush=bool(bites))  # flush so the graph gets the bite's peak
+
+        if not bites and self._cast_overdue(now):  # a bite heard in this same pass still wins
+            self._recast_overdue()
+            return
 
         if self.state is State.IDLE:
             self._cast(now)
@@ -189,6 +194,56 @@ class FishingEngine:
         elif self.state is State.INTERACT:
             self._after_interact(now)
         self._maybe_stats(now)
+
+    def _pause(self, now: float) -> None:
+        self._resume_state = self.state
+        self._paused_at = now
+        self.state = State.PAUSED
+        self._emit(ev.Paused(self._t(), UNFOCUSED))
+
+    def _resume(self, now: float) -> bool:
+        """Leave PAUSED for the state it interrupted; True when this pass is used up.
+
+        The game's cast went on while the bot was paused, so its hard limit (from _t_cast) is
+        not moved: a cast that ran out meanwhile is recast at once. The bot's own waits (the
+        icon search, the loot) are moved by the pause, so they are not cut short by it.
+        """
+        paused_for = max(0.0, now - (self._paused_at if self._paused_at is not None else now))
+        self._paused_at = None
+        pending, self._pending_bite = self._pending_bite, None
+        self.state = self._resume_state
+        self._emit(ev.Resumed(self._t(), self.state))
+        if self.state not in BUSY:
+            return False
+        if self._cast_overdue(now):
+            self._recast_overdue(while_paused=True)
+            return True
+        self._t_look += paused_for
+        self._t_interact += paused_for
+        if pending is not None and now - pending[0] <= LATE_INTERACT_S:
+            self._interact(pending[1])
+            return True
+        return False
+
+    def _cast_limit(self, state: State) -> float:
+        """Seconds from the cast key press after which this cast is given up and recast. A loot
+        under way gets loot_timeout_s more, so a bite heard at the last moment still lands."""
+        limit = self.cfg.run.cast_timeout_s
+        return limit + self.cfg.run.loot_timeout_s if state is State.INTERACT else limit
+
+    def _cast_overdue(self, now: float) -> bool:
+        return self.state in BUSY and now - self._t_cast > self._cast_limit(self.state)
+
+    def _recast_overdue(self, *, while_paused: bool = False) -> None:
+        limit = self.cfg.run.cast_timeout_s
+        what = "bite" if self.state is State.WAIT_BITE else "cast"
+        clip, score = self._best_heard
+        detail = f"best match {score:.2f} ({clip})" if clip else "nothing matched"
+        if while_paused:
+            detail = f"the cast ran out while the game was not focused; {detail}"
+        self._emit(ev.Timeout(self._t(), what, limit, detail))
+        did = "The cast ran out while paused" if while_paused else f"No catch within {limit:g} s"
+        self._miss(did)
 
     def _cast(self, now: float) -> None:
         if self._find_window is not None:
@@ -215,7 +270,7 @@ class FishingEngine:
             self._t(), self.stats.casts + 1, self.stats.catches, self.stats.misses,
             self.stats.bites_heard, self._elapsed(),
         )  # fmt: skip
-        self._t_cast = now
+        self._t_cast = self._t_look = now
         if self.search is not None:
             self.search.reset()
         limit = self.cfg.run.icon_timeout_s
@@ -241,7 +296,7 @@ class FishingEngine:
                 self._icon_timeouts = 0
                 self._found(frame, IconMatch(cal.score, cal.x, cal.y, cal.icon_size_px, cal.gold))
                 return
-        if now - self._t_cast > self.cfg.run.icon_timeout_s:
+        if now - self._t_look > self.cfg.run.icon_timeout_s:
             self._emit(ev.Timeout(self._t(), "icon", self.cfg.run.icon_timeout_s))
             self._icon_timeouts += 1
             if self._icon_timeouts >= RESWEEP_AFTER_TIMEOUTS:
@@ -287,30 +342,27 @@ class FishingEngine:
             if self._stop:
                 return
             if self.input.is_game_focused(self.window) is False:
-                self._resume_state = State.WAIT_BITE
-                self.state = State.PAUSED
-                self._emit(ev.Paused(self._t(), UNFOCUSED))
+                self._pause(self._clock())  # Interact on resume if focus comes back quickly
+                self._pending_bite = (self._clock(), bite)
                 return
-            key = self.cfg.game.interact_key
-            self._press(key, "bite")
-            self._t_interact = self._clock()
-            self._last_box_grab = -math.inf
-            self._change(
-                State.INTERACT,
-                f"Heard the splash ({bite.score:.2f}), pressed {key}",
-                "Waiting for the bobber to go away so Auto Loot can finish",
-            )
+            self._interact(bite)
             return
         seen = self._track(now)
         if seen is False and self._misses >= self.lost_after:
             self._emit(ev.IconLost(self._t()))
             self._miss("Lost sight of the bobber")
-            return
-        if now - self._t_cast > self.cfg.run.cast_timeout_s:
-            clip, score = self._best_heard
-            detail = f"best match {score:.2f} ({clip})" if clip else "nothing matched"
-            self._emit(ev.Timeout(self._t(), "bite", self.cfg.run.cast_timeout_s, detail))
-            self._miss("No splash heard")
+        # no splash for too long: _step's hard limit on the cast (run.cast_timeout_s) recasts
+
+    def _interact(self, bite: Any) -> None:
+        key = self.cfg.game.interact_key
+        self._press(key, "bite")
+        self._t_interact = self._clock()
+        self._last_box_grab = -math.inf
+        self._change(
+            State.INTERACT,
+            f"Heard the splash ({bite.score:.2f}), pressed {key}",
+            "Waiting for the bobber to go away so Auto Loot can finish",
+        )
 
     def _after_interact(self, now: float) -> None:
         seen = self._track(now)
