@@ -19,6 +19,7 @@ class App:
         import ttkbootstrap as tb
 
         self.p = presenter or Presenter()
+        _windows_app_id()
         theme.register()
         self.root = tb.Window(
             themename=theme.THEME, title=f"wowfish {__version__}", minsize=(1000, 760)
@@ -27,6 +28,8 @@ class App:
         self._set_icon()
         bar = tb.Frame(self.root, padding=(16, 12, 16, 0))
         bar.pack(fill="x")
+        if self._icons:
+            tb.Label(bar, image=self._icons[1], background=theme.BG).pack(side="left", padx=(0, 10))
         tb.Label(bar, text="wowfish", style="Brand.TLabel").pack(side="left")
         tb.Label(bar, text=f"  v{__version__}", style="Muted.TLabel").pack(side="left", pady=(6, 0))
         nb = tb.Notebook(self.root)
@@ -43,16 +46,17 @@ class App:
         self._after = self.root.after(POLL_MS, self._tick)
 
     def _set_icon(self) -> None:
-        """The logo in the title bar and taskbar, for this window and the ones it opens."""
+        """The logo in the title bar and taskbar, for this window and the ones it opens.
+        Keeps the images (256, 32, 16 px) for the header and the mini bar too."""
         import tkinter as tk
 
         from wowfish.assets import app_icon_path
 
         try:
-            self._icon = tk.PhotoImage(file=str(app_icon_path()))
-            self.root.iconphoto(True, self._icon)
+            self._icons = [tk.PhotoImage(file=str(app_icon_path(s))) for s in (256, 32, 16)]
+            self.root.iconphoto(True, *self._icons)
         except (tk.TclError, OSError):  # a missing or unreadable icon is only cosmetic
-            self._icon = None
+            self._icons = []
 
     def tick(self) -> None:
         view = self.p.poll()
@@ -73,8 +77,9 @@ class App:
         if not self.p.cfg.gui.mini_bar:
             return
         self.bar = MiniBar(
-            self.root, on_stop=self.p.stop, on_open=self._show_main, on_moved=self.p.focus_game
-        )
+            self.root, on_stop=self.p.stop, on_open=self._show_main, on_moved=self.p.focus_game,
+            logo=self._icons[2] if self._icons else None,
+        )  # fmt: skip
         self.p.focus_game()  # again: on some platforms the new bar took focus from the game
 
     def _fishing_stopped(self) -> None:
@@ -120,6 +125,21 @@ class App:
         self.setup = self.fish = None  # type: ignore[assignment]
         self.root = None  # type: ignore[assignment]
         gc.collect()
+
+
+def _windows_app_id() -> None:
+    """Give the process its own taskbar identity on Windows, so the taskbar shows the window's
+    logo rather than the Python interpreter's icon. Must run before the first window."""
+    import sys
+
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("WowFishingAssist.wowfish")
+    except Exception:  # cosmetic only
+        pass
 
 
 def run() -> None:

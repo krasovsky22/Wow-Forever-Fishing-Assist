@@ -36,6 +36,7 @@ class MiniBar:
         on_stop: Callable[[], None],
         on_open: Callable[[], None],
         on_moved: Callable[[], None] | None = None,
+        logo: Any = None,
     ) -> None:
         import tkinter as tk
 
@@ -52,6 +53,9 @@ class MiniBar:
         font = (theme.FONT, 9)
         bold = (theme.FONT, 10, "bold")
 
+        if logo is not None:
+            self.logo = tk.Label(body, image=logo, bg=BAR_BG)
+            self.logo.pack(side="left", padx=(0, 8))
         self.dot = tk.Canvas(body, width=10, height=10, background=BAR_BG, highlightthickness=0)
         self._dot = self.dot.create_oval(1, 1, 9, 9, fill=theme.GRID, outline="")
         self.dot.pack(side="left", padx=(0, 6))
@@ -77,7 +81,13 @@ class MiniBar:
         self.open_button = button("Open", on_open, theme.FG)
         self.open_button.pack(side="left", padx=(6, 0))
 
-        for w in (body, self.dot, self.state, self.stats):  # drag by anything but the buttons
+        for w in (
+            body,
+            self.dot,
+            self.state,
+            self.stats,
+            *([self.logo] if logo else []),
+        ):  # drag by anything but the buttons
             w.bind("<ButtonPress-1>", self._grab)
             w.bind("<B1-Motion>", self._drag)
             w.bind("<ButtonRelease-1>", lambda _e: self._on_moved())
