@@ -60,6 +60,9 @@ def run(
         )
     except (RuntimeError, NotSupported, AudioUnavailable) as e:
         fail(str(e))
+    from wowfish.capture.focus import focus_window
+
+    focus_window(engine.window)  # start casting at once instead of paused until a click
     thread = EngineThread(engine)
     thread.start()
     w = engine.window

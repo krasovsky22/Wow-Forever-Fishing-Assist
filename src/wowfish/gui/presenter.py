@@ -165,6 +165,7 @@ class Presenter:
         open_capture: Callable[..., Any] | None = None,
         find_window: Callable[..., Any] | None = None,
         get_capturer: Callable[..., Any] | None = None,
+        focus_window: Callable[[Any], bool] | None = None,
     ) -> None:
         from wowfish.audio.devices import GAME, GAME_CHOICE, LoopbackDevice, list_loopback_devices
         from wowfish.audio.devices import open_capture as real_open
@@ -180,6 +181,9 @@ class Presenter:
         self._device_type = LoopbackDevice
         self._find_window = find_window or real_find
         self._get_capturer = get_capturer or real_capturer
+        if focus_window is None:
+            from wowfish.capture.focus import focus_window
+        self._focus_window = focus_window
 
         self.cfg: Config = load_config()[0]
         self._results: queue.Queue[object] = queue.Queue()
@@ -350,11 +354,20 @@ class Presenter:
         except Exception as e:
             self._results.put(WorkerFailed("start", str(e)))
             return
+        # Hand the screen to the game before the first step, so the bot starts casting
+        # instead of pausing until the player clicks into it.
+        self.focus_game(getattr(engine, "window", None))
         self._thread = EngineThread(engine)
         self._thread.start()
         self.state = State.IDLE.name
         self.did = "Started"
         self.next = "Casting"
+
+    def focus_game(self, window: Any = None) -> bool:
+        """Bring the game window to the front with keyboard focus; False when it could not
+        be done (the player then clicks into the game)."""
+        window = window or self._find_window(GAME_TITLE)
+        return bool(window is not None and self._focus_window(window))
 
     def stop(self) -> None:
         if self._thread is not None:

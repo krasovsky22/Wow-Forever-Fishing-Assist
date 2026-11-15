@@ -691,3 +691,36 @@ def test_fish_tab_words_and_numbers():
                      "time": "1:02:05"}  # fmt: skip
     assert theme.state_look("WAIT_BITE")[0] == "Waiting for a bite"
     assert theme.state_look("STOPPED", "Stopped (error)")[1] == theme.RED
+
+
+def test_start_hands_the_screen_to_the_game(tmp_path, monkeypatch):
+    """Start focuses the game window before the bot's first step; the focus helper picks
+    the platform's way and never raises."""
+    import queue
+
+    from wowfish.capture import focus
+
+    monkeypatch.setenv("WOWFISH_HOME", str(tmp_path))
+    window = WindowRef("World of Warcraft", 42, 0, 0, 10, 10, handle=7)
+    order: list[str] = []
+    engine = SimpleNamespace(
+        window=window, events=queue.Queue(), run=lambda: order.append("run"), stop=lambda: None
+    )
+    focused: list[object] = []
+    p = Presenter(
+        build_engine=lambda *a, **k: engine, list_devices=lambda: [],
+        find_window=lambda *a: window,
+        focus_window=lambda w: focused.append(w) or order.append("focus") or True,
+    )  # fmt: skip
+    p.start()
+    p._thread._thread.join(2)
+    assert focused == [window] and order == ["focus", "run"]
+    assert p.focus_game() is True
+
+    assert focus.focus_window(None) is False
+    sent: list[str] = []
+    monkeypatch.setattr(_wayland, "hyprland_dispatch", lambda c: sent.append(c) or "ok")
+    native = WindowRef("World of Warcraft", 9, 0, 0, 10, 10, 0x5F00, "hyprland")
+    assert focus.focus_window(native) is True and sent == ["focuswindow address:0x5f00"]
+    monkeypatch.setattr(_wayland, "hyprland_dispatch", lambda c: 1 / 0)
+    assert focus.focus_window(native) is False

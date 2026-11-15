@@ -49,6 +49,18 @@ def hyprland_request(command: str) -> Any:
     return json.loads(b"".join(parts) or b"{}")
 
 
+def hyprland_dispatch(command: str) -> str:
+    """Run one `hyprctl dispatch` command over the IPC socket; Hyprland answers "ok"."""
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+        s.settimeout(2.0)
+        s.connect(_hyprland_socket())
+        s.sendall(f"dispatch {command}".encode())
+        parts: list[bytes] = []
+        while chunk := s.recv(65536):
+            parts.append(chunk)
+    return b"".join(parts).decode("utf-8", "replace").strip()
+
+
 def pick_hyprland_window(
     clients: Sequence[dict[str, Any]], monitors: Sequence[dict[str, Any]], title_substring: str
 ) -> WindowRef | None:
