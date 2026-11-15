@@ -31,6 +31,15 @@ class IconFound(Event):
 
 
 @dataclass(frozen=True)
+class IconIgnored(Event):
+    """A gear-like match on the same pixel before two casts in a row: part of the UI, not a
+    bobber. It is masked out of the icon search for the rest of the session."""
+
+    xy: tuple[int, int]
+    score: float
+
+
+@dataclass(frozen=True)
 class Calibrated(Event):
     size: int  # icon side in window pixels, measured on this frame
     score: float
