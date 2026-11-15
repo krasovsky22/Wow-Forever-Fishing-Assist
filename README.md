@@ -175,6 +175,7 @@ back to its default.
 | `game.session_minutes` | `0` | Stop after this many minutes; 0 runs until you stop it. |
 | `game.quit_key` | `""` | A key with a `/quit` macro. When the time limit runs out, the bot finishes the current cast, then presses it until the game closes (3 tries at most, waiting up to 30 s each). |
 | `run.cast_timeout_s` | `30` | **Recast after**: give up on a cast after this many seconds (5–120). Set it 1–2 s above how long a cast lasts in the game. |
+| `vision.catch_popup` | `true` | Also count a catch when the game shows its "YOUR CATCH" popup after Interact. |
 | `audio.bite_threshold` | `0.66` | How well a sound must match a splash to count as a bite. The Setup tab's bite check suggests a value. |
 | `audio.capture` | `"game"` | `"game"` hears only WoW; `"device"` hears the loopback device in `audio.device`. |
 | `gui.mini_bar` | `true` | While fishing, show the small bar over the game. `false` keeps the main window instead. |

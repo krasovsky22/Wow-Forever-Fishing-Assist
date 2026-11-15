@@ -28,6 +28,7 @@ def check_assets_present(root: Path) -> None:
         assets / "icon.png",
         assets / "icon-32.png",
         assets / "icon-16.png",
+        assets / "catch_popup" / "your_catch.png",
     ]
     missing = [str(p.relative_to(root)) for p in expected if not p.is_file()]
     if missing:

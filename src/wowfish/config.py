@@ -51,6 +51,7 @@ class VisionConfig:
     icon_native_size: int = 0
     icon_threshold: float = 0.75
     match_width: int = 1920
+    catch_popup: bool = True  # also count a catch when the "YOUR CATCH" popup shows
 
 
 @dataclass(frozen=True)

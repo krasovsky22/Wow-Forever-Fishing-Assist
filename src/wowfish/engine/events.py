@@ -64,7 +64,7 @@ class KeyPressed(Event):
 
 @dataclass(frozen=True)
 class Caught(Event):
-    pass
+    by_popup: bool = False  # seen by the game's catch popup, not by the bobber going away
 
 
 @dataclass(frozen=True)

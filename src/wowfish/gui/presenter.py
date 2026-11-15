@@ -48,6 +48,8 @@ def describe(event: ev.Event) -> str:
             return f"Pressed {key} to quit the game"
         case ev.KeyPressed(key=key):
             return f"Pressed {key} to interact"
+        case ev.Caught(by_popup=True):
+            return "Caught a fish; the catch popup showed"
         case ev.Caught():
             return "Caught something; the bobber is gone"
         case ev.IconIgnored(xy=(x, y)):
