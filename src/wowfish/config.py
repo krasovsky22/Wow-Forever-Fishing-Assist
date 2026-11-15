@@ -91,12 +91,18 @@ class BehaviorConfig:
 
 
 @dataclass(frozen=True)
+class GuiConfig:
+    mini_bar: bool = True  # while fishing, a small bar over the game instead of the main window
+
+
+@dataclass(frozen=True)
 class Config:
     game: GameConfig
     vision: VisionConfig
     audio: AudioConfig
     run: RunConfig = field(default_factory=RunConfig)
     behavior: BehaviorConfig = field(default_factory=BehaviorConfig)
+    gui: GuiConfig = field(default_factory=GuiConfig)
 
 
 _SECTIONS: dict[str, type] = {
@@ -105,6 +111,7 @@ _SECTIONS: dict[str, type] = {
     "audio": AudioConfig,
     "run": RunConfig,
     "behavior": BehaviorConfig,
+    "gui": GuiConfig,
 }
 
 

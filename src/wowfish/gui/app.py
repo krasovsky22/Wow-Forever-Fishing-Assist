@@ -54,7 +54,11 @@ class App:
             self.bar.render(view.state, view.did, view.stats_values)
 
     def _fishing_started(self) -> None:
-        """The game gets the screen; a mini bar over it keeps Stop and the numbers in reach."""
+        """The game gets the screen; a mini bar over it keeps Stop and the numbers in reach.
+        With gui.mini_bar off the main window simply stays as it is (Start already focused
+        the game)."""
+        if not self.p.cfg.gui.mini_bar:
+            return
         self.bar = MiniBar(
             self.root, on_stop=self.p.stop, on_open=self._show_main, on_moved=self.p.focus_game
         )

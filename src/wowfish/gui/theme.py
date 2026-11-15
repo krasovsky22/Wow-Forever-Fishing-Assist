@@ -70,6 +70,8 @@ def apply_styles(style: Any) -> None:
     style.configure("Card.TFrame", background=CARD, bordercolor=CARD_EDGE, relief="solid")
     style.configure("CardBody.TFrame", background=CARD, borderwidth=0, relief="flat")
     style.configure("Card.TLabel", background=CARD, foreground=FG, font=base)
+    style.configure("Card.TCheckbutton", background=CARD, foreground=FG, font=base)
+    style.map("Card.TCheckbutton", background=[("active", CARD)])
     style.configure("CardMuted.TLabel", background=CARD, foreground=MUTED, font=(FONT, 9))
     style.configure("CardTitle.TLabel", background=CARD, foreground=FG, font=(FONT, 11, "bold"))
     style.configure("CardAccent.TLabel", background=CARD, foreground=GOLD, font=(FONT, 9, "bold"))

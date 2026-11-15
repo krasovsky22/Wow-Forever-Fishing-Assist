@@ -246,6 +246,13 @@ class Presenter:
             self.reload()
         return seconds
 
+    def save_mini_bar(self, on: bool) -> None:
+        """Save gui.mini_bar from the Setup tab; used from the next Start."""
+        self.reload()  # a running bot may have saved a calibration since this was loaded
+        if on != self.cfg.gui.mini_bar:
+            save_config(replace(self.cfg, gui=replace(self.cfg.gui, mini_bar=on)))
+            self.reload()
+
     def audio_devices(self) -> list[Any]:
         """The game's own audio first (default), then the loopback monitors.
 

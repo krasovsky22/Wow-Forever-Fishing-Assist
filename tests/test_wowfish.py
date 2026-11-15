@@ -724,3 +724,29 @@ def test_start_hands_the_screen_to_the_game(tmp_path, monkeypatch):
     assert focus.focus_window(native) is True and sent == ["focuswindow address:0x5f00"]
     monkeypatch.setattr(_wayland, "hyprland_dispatch", lambda c: 1 / 0)
     assert focus.focus_window(native) is False
+
+
+def test_mini_bar_setting(tmp_path, monkeypatch):
+    """gui.mini_bar is on by default, can be switched off in the file or on the Setup tab,
+    and an older config gains it with its comment."""
+    monkeypatch.setenv("WOWFISH_HOME", str(tmp_path))
+    assert Config(game=GameConfig(), vision=VisionConfig(), audio=AudioConfig()).gui.mini_bar
+    path = tmp_path / "config.toml"
+    path.write_text("[gui]\nmini_bar = false\n", encoding="utf-8")
+    assert load_config(path)[0].gui.mini_bar is False
+    path.write_text("[gui]\nmini_bar = 1\n", encoding="utf-8")
+    try:
+        load_config(path)
+    except Exception as e:
+        assert "gui.mini_bar must be bool" in str(e)
+    else:
+        raise AssertionError("an int was accepted for a bool")
+
+    p = Presenter(build_engine=lambda *a, **k: None, list_devices=lambda: [],
+                  find_window=lambda *a: None)  # fmt: skip
+    p.save_mini_bar(False)
+    assert p.cfg.gui.mini_bar is False and "mini_bar = false" in p_config_text(tmp_path)
+
+
+def p_config_text(home: Path) -> str:
+    return (home / "config" / "config.toml").read_text(encoding="utf-8")

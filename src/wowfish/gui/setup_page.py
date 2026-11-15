@@ -24,10 +24,7 @@ STEPS = (
     ("Optional: a quit macro", "put /quit on a key and enter it as the quit key; the bot "
      "presses it when the time limit runs out."),
 )  # fmt: skip
-CHECKLIST_FOOTER = (
-    "Then press Start fishing on the Fish tab. The first cast of every run measures the gear "
-    "icon, so the bite check and calibration are only needed when fishing misbehaves."
-)
+CHECKLIST_FOOTER = "Then press Start fishing on the Fish tab."
 RECAST_HINT = "Recast after: 1-2 s more than a cast lasts in the game."
 VERIFY_HINT = "Click, then fish by hand until a fish bites (records for 60 s)."
 CALIBRATE_HINT = (
@@ -38,6 +35,8 @@ NOTE_WRAP = 460
 
 class SetupPage:
     def __init__(self, parent: Any, presenter: Presenter) -> None:
+        import tkinter as tk
+
         import ttkbootstrap as tb
 
         self.p = presenter
@@ -93,9 +92,17 @@ class SetupPage:
         tb.Button(body, text="Save", command=self._save_all, bootstyle="primary", width=8).grid(
             row=3, column=2, sticky="e"
         )
+        self.mini_bar = tk.BooleanVar(value=presenter.cfg.gui.mini_bar)
+        tb.Checkbutton(
+            body,
+            text="Show a mini bar over the game while fishing",
+            variable=self.mini_bar,
+            command=self._save_mini_bar,
+            style="Card.TCheckbutton",
+        ).grid(row=4, column=0, columnspan=3, sticky="w", pady=(10, 0))
         self.keys_note = self.limit_note = self.recast_note = note(body, RECAST_HINT)
         self.keys_note.configure(wraplength=360)
-        self.keys_note.grid(row=4, column=0, columnspan=3, sticky="w", pady=(8, 0))
+        self.keys_note.grid(row=5, column=0, columnspan=3, sticky="w", pady=(8, 0))
 
         # -- audio ----------------------------------------------------------------------------
         audio, body = theme.card(right, "Audio", "What the bot listens to for the splash.")
@@ -203,6 +210,12 @@ class SetupPage:
             self.keys_note.configure(text="Saved.")
         except ValueError as e:
             self.keys_note.configure(text=str(e))
+
+    def _save_mini_bar(self) -> None:
+        on = bool(self.mini_bar.get())
+        self.p.save_mini_bar(on)
+        bar = "a mini bar over the game" if on else "the main window"
+        self.keys_note.configure(text=f"Saved: from the next Start, fishing shows {bar}.")
 
     def _save_all(self) -> None:
         """Save the keys, then the time limit and recast time; one note says how it went."""

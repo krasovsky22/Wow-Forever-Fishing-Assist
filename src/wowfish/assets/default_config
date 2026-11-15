@@ -66,3 +66,8 @@ key_hold_jitter_ms = 0
 # Chance (0..1) of jumping in place before a cast, and the Jump keybind.
 jump_chance = 0.0
 jump_key = "space"
+
+[gui]
+# While fishing, hide the main window behind the game and show a small bar over it with the
+# state, the numbers, Stop, and Open. false = keep the main window as it is.
+mini_bar = true
