@@ -1,50 +1,172 @@
-# Wow Fishing Assistant
-Automates fishing in World of Warcraft.
+<div align="center">
 
-### Options in World or warcraft.
+<img src="/assets/cover-photo.jpg" alt="AI-generated photo of a bot fishing" width="360" />
+<h1>WoW Fishing Forever</h1>
 
-Auto loot needs to be turned on.
-
-To utilize baits you must put the bait in a button bar that uses the = key as a map (usually the last button on your main bar)
-
-To utilize sell junk you will need a traveling tundra mount, and you will need to zoom in first person then save your camera view 1 focused on the bobber.
+<p><strong>A fishing bot for WoW</strong></p>
 
 
-### Useage
-Note make sure you have room in your bags.
+<p>
+  <a href="https://github.com/rsamf/wow-fishing-forever/actions/workflows/ci.yml"><img src="https://github.com/rsamf/wow-fishing-forever/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/rsamf/wow-fishing-forever/blob/main/LICENSE"><img src="https://img.shields.io/github/license/rsamf/wow-fishing-forever.svg" alt="License: MIT" /></a>
+  <img src="https://img.shields.io/endpoint?url=https://gittokens.rsamf.com/badge/rsamf/wow-fishing-forever" alt="tokens" />
+</p>
 
-You may have to seed slots with fish you want, otherwise junk items will eventually take up the spots.
+<p>
+  <a href="#install"><b>Install</b></a>
+  &nbsp;·&nbsp;
+  <a href="#go-fish"><b>Go Fish</b></a>
+  &nbsp;·&nbsp;
+  <a href="#commands"><b>Commands</b></a>
+  &nbsp;·&nbsp;
+  <a href="#how-it-works"><b>How It Works</b></a>
+  &nbsp;·&nbsp;
+  <a href="#license"><b>License</b></a>
+</p>
+</div>
 
-0. Load WOW.
-1. Find a place to fish.
-2. Load the Wow Fishing Assistant
-3. Zoom in your view on your charater so you are in first person view
-4. Cast you fishing ling a few times
-5. Adjust you view (camera) so the bobber appears in the monitor window
-6. Cast a few times and make sure each cast is within the bounds of the monitor
-7. When everything looks good click start.
+A fishing bot for **World of Warcraft: Forever**, successor to the 2019
+[wow-fishing-bot](https://github.com/rsamf/wow-fishing-forever/tree/60d0710), now with many improvements, so you can now fish *forever*. It watches the
+game window for the built-in interact icon over your bobber, listens to the game's own splash
+sound for the bite, and presses your Interact key.
 
-## Advanced features
-Some fishing areas have particles floating around, this can cause false positives, to help mitigate this, you can filter on color.
-For example if all the particals are green,  then you would want to use the blue filter as the green in the particals will be removed and only shades of blue will be evaluated.
+> [!NOTE]
+> 🎉 **Announcement** This was my very first Python project but, surprisingly, my most popular repo on GitHub. 
+> When I originally released this for WoW Classic, I had no idea it would get this much attention. I left this
+> project unmaintained for 7 years, but I felt it was time for a return when I saw WoW Forever coming. I have 
+> come back to make many major improvements to the bot and its accessibility. The original bot was only suited 
+> for programmers, but now, I've designed it to be accessible to anyone by releasing GUI executables. Enjoy but 
+> understand the risk you're taking!
 
-Assistant can apply the Scarlett Herring lure to help improve catch
 
-Filters are applied realtime.
+## Install
 
-Motion detection settings need to be applyed.
+### Download an executable (easy, but not recommended)
 
-## Disclaimer
-This can be considered a bot because it reacts to events on the screen without human intervention.  
-This doesn't use any Wow APIs or is in any way tied to Wow code It does not use memory sniffing or in any way effect the running of the wow client. 
+> [!CAUTION]
+> Blizzard uses Warden, an anti-cheat program running alonside World of Warcraft. Warden is known
+> to scan for open window titles or process names. They can discover this project and ban "wowfish*".
+> Thus, it is recommended that you clone, rename the window title and process, and run the python, itself.
 
-This program watches the screen, when it sees movement it clicks where it saw movement, and then presses a key. 
+Grab the file for your OS from the
+[latest release](https://github.com/rsamf/wow-fishing-forever/releases/latest):
 
-## Final thoughts
-This was thrown together is a few hours to see if I could do something better than I did years ago.  
-I used existing tools to accomplish this task. Some of the tools used are
+| OS | file |
+|---|---|
+| Windows 10/11 (x86_64) | `wowfish-<version>-windows-x86_64.exe` |
+| macOS (Apple Silicon) | `wowfish-<version>-macos-arm64` |
+| Linux (x86_64) | `wowfish-<version>-linux-x86_64` |
 
-* [Aforge Vision project](https://github.com/andrewkirillov/AForge.NET)
-* [SharpDX project](https://github.com/sharpdx/SharpDX)
-* Screen capture code taken from an answer from [Pomme De Terre](https://stackoverflow.com/users/4342169/pomme-de-terre) on question [Fast Way to take a screen shot](https://stackoverflow.com/questions/6812068/c-sharp-which-is-the-fastest-way-to-take-a-screen-shot)  
-Thank you for that answer, this was much faster and less cpu intensive way of getting the screen than using GDI+ functions.
+The executables are not code-signed, so the first launch needs one extra step:
+
+- **Windows:** SmartScreen shows "Windows protected your PC". Click *More info*, then
+  *Run anyway*.
+- **macOS:** Gatekeeper blocks it. Run `xattr -d com.apple.quarantine wowfish-*` in Terminal
+  once, and `chmod +x wowfish-*` if needed. Intel Macs: use the developer install below.
+- **Linux:** `chmod +x wowfish-*`.
+
+Verify downloads against `SHA256SUMS.txt` from the same release.
+
+### Run from source
+
+Clone and run in place:
+
+    git clone https://github.com/rsamf/wow-fishing-forever
+    cd wow-fishing-forever
+    uv sync --group dev
+    uv run wowfish doctor
+
+### Additional steps for Mac users
+
+macOS cannot record one app's sound, and it keeps the screen and the keyboard behind privacy
+permissions, so a Mac needs a few one-time steps:
+
+1. **Audio.** Install [BlackHole 2ch](https://existential.audio/blackhole/). In *Audio MIDI
+   Setup*, click **+** > *Create Multi-Output Device*, tick your speakers (or headphones) and
+   BlackHole 2ch, and choose that device in *System Settings > Sound > Output*, so you still
+   hear the game. Then pick **BlackHole 2ch** on wowfish's Setup tab and click *Use this and
+   listen* (this sets `audio.capture = "device"`).
+2. **Permissions.** macOS grants them to the app wowfish runs in: Terminal (double-clicking
+   `wowfish-gui` opens it in Terminal too), or iTerm and the like. In *System Settings > Privacy
+   & Security*, switch that app on under:
+   - *Screen & System Audio Recording*, to see the game window. Quit and reopen the app after.
+   - *Accessibility*, to press keys in the game.
+   - *Microphone*, to listen to BlackHole. macOS asks the first time the bot listens.
+
+   Start shows macOS's prompts for the first two, and `wowfish doctor` says which are missing.
+   macOS 15 also asks whether Terminal may "bypass the system private window picker" when the
+   bot first looks at the game, and again about once a month; click *Allow*.
+
+macOS support is new: it has been tested on macOS 15 in a virtual machine with a stand-in game
+window, not yet in WoW on a real Mac. Please open an issue if it misbehaves.
+
+## Go Fish
+
+> [!CAUTION]
+> **Use at your own risk.** Automating gameplay violates Blizzard's terms of service and can
+> get your account banned. This project exists for educational purposes only.
+
+In the game:
+
+1. *Options > Gameplay > Controls*: enable **Auto Loot**.
+2. *Options > Keybindings > Targeting*: bind **Interact With Target**. wowfish assumes `f`.
+3. Put **Fishing** on an action bar key. wowfish assumes `1`.
+4. Type `/console SoftTargetIconGameObject 1` once. This shows the gold gear icon over your
+   bobber whenever it is close enough to interact with.
+5. *Options > Sound*: set **Ambience** and **Music** to 0 and keep **Sound Effects** up.
+
+
+**Note to Linux users**: On GNOME, the first synthetic key press opens a "Remote Desktop" dialog. Switch on *Allow Remote Interaction* and click *Share*. Until you do, key presses are silently dropped.
+
+**Note to Wayland users**: A game running as a native Wayland client (e.g. Proton with `PROTON_ENABLE_WAYLAND=1`) is supported on Hyprland: install [`grim`](https://gitlab.freedesktop.org/emersion/grim) for screen capture; keys go through the compositor's virtual keyboard. The game must be on screen while fishing. On other compositors, run the game under Xwayland (`PROTON_ENABLE_WAYLAND=0`).
+
+**Note to Windows users**: You may need to run the program in admin mode.
+
+Stand at the water and run the GUI:
+
+    wowfish gui          # or double-click wowfish-gui
+
+Or run it from terminal:
+
+    wowfish doctor                      # checks the compatibility with this machine
+    wowfish config                      # creates the config file; edit cast_key / interact_key
+    wowfish run                         # measures the icon on its first cast; Ctrl-C stops
+
+While the bot is running, keep the water in view and the game client in focus.
+
+If a cast goes nowhere (no splash heard, or the bobber is never lost from sight), the bot gives up and recasts `cast_timeout_s` seconds after casting (30 by default, 5-120), whatever it is doing. Set it on the Setup tab (*Recast after*), as `cast_timeout_s` in the `[run]` section of the config file, or for one run with `wowfish run --recast-after S`. Pick 1-2 s more than a cast lasts in the game.
+
+To vary the bot's rhythm, fill in the `[behavior]` section of the config file (`wowfish config --path`): breaks after a stretch of fishing, a reaction delay before Interact, the odd bite let go on purpose, uneven key holds, and a jump before the occasional cast. It is all off by default.
+
+To close the game when the time limit runs out, make a macro with `/quit`, put it on an action bar key, and enter that key as the Quit key on the Setup tab (`quit_key` in the config file). Once the session is over, the bot lets the cast in hand finish, presses the key, and waits up to 30 s for the game window to close (away from an inn, logging out takes 20 s). If the window stays, it presses again, three times at most.
+
+## Commands
+
+| command | what it does |
+|---|---|
+| `wowfish gui` | The setup and fishing window |
+| `wowfish run [--minutes N] [--recast-after S] [--record-audio WAV]` | Fish from the terminal until Ctrl-C or the session limit; optionally override the recast time or save everything heard |
+| `wowfish doctor` | Check OS, display, OpenCV, audio devices, game window, input, calibration, config |
+| `wowfish calibrate SHOT.png [--save]` | Measure the interact icon's on-screen size from a screenshot |
+| `wowfish watch --live` | Show what the matcher sees: phase, score, position, milliseconds per frame |
+| `wowfish watch --from DIR` | Same, over saved frames; `--save-frames` writes annotated thumbnails |
+| `wowfish listen [--list] [--device D] [--record WAV]` | Meter the game's audio (or loopback device D), print bites as they are heard |
+| `wowfish verify-bite WAV [--save]` | Score a recording against every splash clip and pick the bite |
+| `wowfish config` | Create the config file if needed and print the resolved settings |
+| `wowfish config --path` | Print only the config file location |
+| `wowfish --version` | Print the version |
+
+Add `--verbose` before any command for debug logging. `doctor` prints the log file path.
+
+## How It Works
+
+This bot looks at pixels and listens to sound, and it presses the keys to cast and loot. It does not read memory, inject code, inject network traffic, or rely on an addon.
+
+1. **Cast**: It casts using your specified cast key. Each key press is simulated with a `key_hold_ms` timer.
+2. **Detect bobber**: WoW draws a gold gear sprite over the bobber when it is in interact
+range. If you do not see the gold gear sprite above the bobber, that means the bobber is out of range for the interact key to work, so the bot will recast. The bot will scan for the sprite using template matching from OpenCV, and it matches it against the game window with a masked, mean-subtracted template match. If it doesn't find it, it will recast until it does. 
+3. **Detect bite**: WoW plays one of its splash clips when a fish bites. The bot fingerprints the first 0.8 seconds of each as a log-mel spectrogram with the gain removed. If there's a match, the bot will simulate the interact key, and auto-loot should pick up your fish. After all that, the bot recasts.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

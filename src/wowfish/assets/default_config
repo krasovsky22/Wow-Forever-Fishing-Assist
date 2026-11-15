@@ -1,0 +1,68 @@
+# wowfish configuration. Delete any line to go back to its default.
+
+[game]
+# Keybind for the Fishing ability on your action bar.
+cast_key = "1"
+# Keybind for Interact With Target (Options > Keybindings > Targeting).
+interact_key = "f"
+# Stop fishing after this many minutes. Set to 0 to run Forever!
+session_minutes = 0
+# Keybind of an action bar macro containing /quit. When session_minutes runs out, the bot
+# finishes the cast in hand, then presses it until the game window closes (3 tries at most).
+# Empty = leave the game running.
+quit_key = ""
+
+[vision]
+# On-screen size of the interact icon in pixels. 0 = not calibrated; `wowfish calibrate` sets it.
+icon_size_px = 0
+icon_native_size = 0
+# Minimum match score (0..1) to accept the icon.
+icon_threshold = 0.75
+# Frames wider than this are downscaled before matching.
+match_width = 1920
+
+[audio]
+# "game": hear only the game's own audio stream (Linux PipeWire, Windows 10 2004+), so music or
+# videos in other applications cannot drown the splash. "device": hear the loopback `device`.
+capture = "game"
+# Loopback device id or name substring, used when capture = "device". Empty = monitor of the
+# default output.
+device = ""
+bite_threshold = 0.66
+# Ignore further bites for this many seconds after one fires.
+refractory_s = 3.0
+
+[run]
+# Recast if the gear icon is not seen this many seconds after casting.
+icon_timeout_s = 4.0
+# Recast if no fish is caught this many seconds after casting, whatever the bot is doing
+# (5-120). Set it 1-2 s above how long the cast lasts in the game.
+cast_timeout_s = 30.0
+# Count a miss if the bobber is still there this many seconds after pressing Interact.
+loot_timeout_s = 3.0
+# Random pause between actions, in seconds.
+pause_min_s = 0.5
+pause_max_s = 2.0
+# How long each key is held down, in milliseconds.
+key_hold_ms = 60
+
+[behavior]
+# Variations so the bot does not keep the exact same rhythm. All of them are off by default.
+# Take a break after fishing for a random number of minutes between these two.
+# 0 = never take a break.
+break_every_min_minutes = 0.0
+break_every_max_minutes = 0.0
+# How long each break lasts, in minutes, picked at random between these two.
+break_min_minutes = 0.0
+break_max_minutes = 0.0
+# Wait a random number of milliseconds between these two after hearing the splash, before
+# pressing Interact. Keep it under a second or so, or the fish gets away.
+reaction_min_ms = 0
+reaction_max_ms = 0
+# Chance (0..1) of letting a bite go on purpose, as if it was missed.
+skip_bite_chance = 0.0
+# Hold each key for run.key_hold_ms, give or take up to this many milliseconds.
+key_hold_jitter_ms = 0
+# Chance (0..1) of jumping in place before a cast, and the Jump keybind.
+jump_chance = 0.0
+jump_key = "space"

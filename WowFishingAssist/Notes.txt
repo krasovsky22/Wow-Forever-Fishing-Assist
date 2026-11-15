@@ -1,2 +1,0 @@
-﻿TODO: replace SharpDX for Vortice or Maybe Silk.net
-TODO: replace Aforge with somthing modern
