@@ -678,3 +678,16 @@ def test_cast_timeout_from_the_setup_tab_and_its_log_line(tmp_path, monkeypatch)
             raise AssertionError(f"{bad!r} was accepted")
     line = describe(ev.Timeout(1.0, "cast", 22.0, "nothing matched"))
     assert line == "No catch within 22 s of casting; nothing matched; recasting"
+
+
+def test_fish_tab_words_and_numbers():
+    """The stat tiles and the state pill read as plain words, not engine names."""
+    from wowfish.gui import theme
+    from wowfish.gui.fish_page import tile_values
+
+    assert tile_values(None)["rate"] == "-"
+    tiles = tile_values(ev.Stats(0.0, casts=42, catches=37, misses=5, elapsed_s=3725))
+    assert tiles == {"catches": "37", "casts": "42", "misses": "5", "rate": "88%",
+                     "time": "1:02:05"}  # fmt: skip
+    assert theme.state_look("WAIT_BITE")[0] == "Waiting for a bite"
+    assert theme.state_look("STOPPED", "Stopped (error)")[1] == theme.RED

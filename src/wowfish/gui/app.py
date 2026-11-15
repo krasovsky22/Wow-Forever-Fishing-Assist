@@ -5,6 +5,7 @@ from __future__ import annotations
 import gc
 
 from wowfish import __version__
+from wowfish.gui import theme
 from wowfish.gui.fish_page import FishPage
 from wowfish.gui.presenter import Presenter
 from wowfish.gui.setup_page import SetupPage
@@ -17,11 +18,17 @@ class App:
         import ttkbootstrap as tb
 
         self.p = presenter or Presenter()
+        theme.register()
         self.root = tb.Window(
-            themename="bootstrap-dark", title=f"wowfish {__version__}", minsize=(900, 640)
+            themename=theme.THEME, title=f"wowfish {__version__}", minsize=(1000, 760)
         )
+        theme.apply_styles(tb.Style())
+        bar = tb.Frame(self.root, padding=(16, 12, 16, 0))
+        bar.pack(fill="x")
+        tb.Label(bar, text="wowfish", style="Brand.TLabel").pack(side="left")
+        tb.Label(bar, text=f"  v{__version__}", style="Muted.TLabel").pack(side="left", pady=(6, 0))
         nb = tb.Notebook(self.root)
-        nb.pack(fill="both", expand=True, padx=8, pady=8)
+        nb.pack(fill="both", expand=True, padx=12, pady=(8, 12))
         self.setup = SetupPage(nb, self.p)
         self.fish = FishPage(nb, self.p)
         nb.add(self.setup.frame, text="Setup")

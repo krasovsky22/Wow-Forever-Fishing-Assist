@@ -124,6 +124,7 @@ class View:
     listening: bool = False  # the meter or the bite recording is reading audio
     verify_status: str = ""  # what the bite recording is doing; empty when idle
     calibrate_status: str = ""  # what the calibration is doing; empty when idle
+    stats_values: ev.Stats | None = None  # the numbers behind `stats`, for the stat tiles
 
 
 class _Meter:
@@ -187,7 +188,8 @@ class Presenter:
         self.state = State.IDLE.name
         self.did = "Not started"
         self.next = "Press Start when the game is at the water"
-        self.stats = ev.Stats(0.0).as_line()
+        self.stats_values = ev.Stats(0.0)
+        self.stats = self.stats_values.as_line()
         self.thumbnail_png: bytes | None = None
         self._before_pause: tuple[str, str, str] | None = None
         self.last_calibration: CalibrateDone | None = None
@@ -396,6 +398,7 @@ class Presenter:
             listening=self.meter_running or self._record_level is not None,
             verify_status=self.verify_status,
             calibrate_status=self.calibrate_status,
+            stats_values=self.stats_values,
         )  # fmt: skip
 
     def _add_scores(self, event: ev.Scores) -> None:
@@ -419,6 +422,7 @@ class Presenter:
                 self.trace.timed_out = True
                 self.trace.version += 1
             case ev.Stats():
+                self.stats_values = event
                 self.stats = event.as_line()
             case ev.Paused(reason=reason):
                 self._before_pause = (self.state, self.did, self.next)

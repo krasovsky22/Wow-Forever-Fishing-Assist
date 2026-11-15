@@ -5,17 +5,18 @@ from __future__ import annotations
 from typing import Any
 
 from wowfish.assets import CLIP_NAMES
+from wowfish.gui import theme
 from wowfish.gui.presenter import ScoreTrace
 
-# One colour per clip, fixed in CLIP_NAMES order. Validated as a set on the bootstrap-dark
-# surface (all checks pass; worst adjacent colour-blind separation dE 8.4, inside the band that
-# needs names on screen too), so the legend and the hover readout always name the clips.
+# One colour per clip, fixed in CLIP_NAMES order. Validated as a set on a dark surface (all
+# checks pass; worst adjacent colour-blind separation dE 8.4, inside the band that needs names
+# on screen too), so the legend and the hover readout always name the clips.
 CLIP_COLORS = dict(zip(CLIP_NAMES, ("#3987e5", "#d95926", "#199e70", "#c98500"), strict=True))
-SURFACE = "#212529"  # bootstrap-dark background
-GRID = "#45484b"
-MUTED = "#bdc4ca"
-TEXT = "#f8f9fa"
-FONT = ("TkDefaultFont", 10)
+SURFACE = theme.CARD
+GRID = theme.GRID
+MUTED = theme.MUTED
+TEXT = theme.FG
+FONT = (theme.FONT, 10)
 GAP = 6  # px between a label and what it labels
 SWATCH = 18  # legend / readout colour sample length in px
 SILENT = -1.0  # the detector's score for a slice too quiet to match; drawn at 0, like the log
