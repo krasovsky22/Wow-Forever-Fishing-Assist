@@ -46,6 +46,10 @@ JUMP_LANDING_S = (1.0, 1.5)  # Fishing cannot be cast mid-air; wait this long af
 QUIT_WAIT_S = 30.0  # away from an inn, /quit counts down 20 s before the game closes
 QUIT_TRIES = 3  # quit key presses before giving up on closing the game
 BUSY = (State.CASTING, State.WAIT_BITE, State.INTERACT)  # a cast in hand
+IGNORE_PAD = 1.5  # an ignored spot is masked this many icon sizes either side of its centre
+MIN_IGNORE_HALF_PX = 24
+UI_SAME_SPOT_PX = 2  # a UI gear matches on the same pixel each time; a bobber never lands twice
+UI_SCAN_MAX = 3  # gear-like matches looked for on screen before each cast
 LATE_INTERACT_S = 1.5  # a bite heard just before a pause is still worth Interact this long after
 
 
@@ -108,6 +112,8 @@ class FishingEngine:
         self._t_look = 0.0  # when the icon search started; shifted by pauses, unlike _t_cast
         self._t_interact = 0.0
         self._paused_at: float | None = None
+        self._precast_spots: list[tuple[int, int, int]] = []  # matches before the last cast
+        self._ui_gears: list[tuple[int, int, int]] = []  # (x, y, half size): masked for good
         self._pending_bite: tuple[float, Any] | None = None  # (heard at, bite) before a pause
         self._icon_xy: tuple[int, int] | None = None
         self._icon_size = 0
@@ -262,6 +268,7 @@ class FishingEngine:
                 return  # the next step stops or pauses before anything else is pressed
             now = self._clock()
         key = self.cfg.game.cast_key
+        self._scan_for_ui_gears()
         clear = getattr(self.audio, "clear", None)
         if clear is not None:  # a pause, break, or jump left audio queued; hear this cast live
             clear()
@@ -282,15 +289,16 @@ class FishingEngine:
 
     def _acquire(self, now: float) -> None:
         frame = self.capturer.grab()
+        masked = self._mask_ui_gears(frame)
         if self.search is not None:  # fast path: the saved or last measured size
-            _, m = self.search.step(frame)
+            _, m = self.search.step(masked)
             if m.accepted(self.threshold):
                 self._icon_timeouts = 0
                 self._sweeping = False
                 self._found(frame, m)
                 return
         if self._sweeping or self.search is None:
-            cal = self._calibrate(frame, match_width=self.cfg.vision.match_width)
+            cal = self._calibrate(masked, match_width=self.cfg.vision.match_width)
             if cal.valid:
                 self._use_calibration(cal)
                 self._icon_timeouts = 0
@@ -302,6 +310,39 @@ class FishingEngine:
             if self._icon_timeouts >= RESWEEP_AFTER_TIMEOUTS:
                 self._sweeping = True
             self._miss("No gear icon over the bobber")
+
+    def _scan_for_ui_gears(self) -> None:
+        """Before a cast, note every gear-like match on screen. One that sits on the same pixel
+        before two casts in a row is part of the UI (a minimap button, an addon icon): bobbers
+        land somewhere new each cast, and an old one vanishes when the next cast starts. Such
+        spots are masked out of the icon search for the rest of the session."""
+        if self.matcher is None:
+            return
+        frame = self._mask_ui_gears(self.capturer.grab())
+        w = frame.shape[1]
+        spots: list[tuple[int, int, int]] = []
+        for _ in range(UI_SCAN_MAX):
+            m = self.matcher.match(frame, full_width=w)
+            if not m.accepted(self.threshold):
+                break
+            half = max(int(m.size * IGNORE_PAD), MIN_IGNORE_HALF_PX)
+            spots.append((m.x, m.y, half))
+            frame = _black_out(frame, m.x, m.y, half)
+        for x, y, half in spots:
+            again = any(
+                abs(x - px) <= UI_SAME_SPOT_PX and abs(y - py) <= UI_SAME_SPOT_PX
+                for px, py, _ in self._precast_spots
+            )
+            if again:
+                self._ui_gears.append((x, y, half))
+                self._emit(ev.IconIgnored(self._t(), (x, y), self.threshold))
+        self._precast_spots = [s for s in spots if s not in self._ui_gears]
+
+    def _mask_ui_gears(self, frame: np.ndarray) -> np.ndarray:
+        """`frame` with every known UI gear painted black (black is never gold)."""
+        for x, y, half in self._ui_gears:
+            frame = _black_out(frame, x, y, half)
+        return frame
 
     def _use_calibration(self, cal: Any) -> None:
         self.matcher = self._matcher_factory(cal.icon_size_px)
@@ -683,3 +724,11 @@ def _real_calibrate(frame: np.ndarray, *, match_width: int = 1920) -> Any:
     from wowfish.vision.template import load_icon_templates
 
     return calibrate_icon_scale(frame, load_icon_templates(), match_width=match_width)
+
+
+def _black_out(frame: np.ndarray, x: int, y: int, half: int) -> np.ndarray:
+    """A copy of `frame` with the square of `half` px around (x, y) painted black."""
+    out = frame.copy()
+    h, w = out.shape[:2]
+    out[max(0, y - half) : min(h, y + half), max(0, x - half) : min(w, x + half)] = 0
+    return out

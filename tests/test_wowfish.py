@@ -420,6 +420,7 @@ class _Pond:
         self.pressed: list[tuple[float, str, float]] = []  # time, key, hold
         self.bites: list[float] = []
         self.cleared: list[float] = []  # when the engine dropped the buffered audio
+        self.casts = 0
 
     def clock(self) -> float:
         return self.t
@@ -437,10 +438,14 @@ class _Pond:
         return np.zeros((10, 10, 3), np.uint8)
 
     def match(self, frame, region=None, full_width=None) -> IconMatch:
-        return IconMatch(0.9 if self.bobber else 0.0, 5, 5, 4, 1.0)
+        # like the game, each cast lands the bobber somewhere a little different
+        x = 3 + 3 * (self.casts % 2)
+        return IconMatch(0.9 if self.bobber else 0.0, x, 5, 4, 1.0)
 
     def press_key(self, key: str, hold_s: float) -> None:
         self.pressed.append((self.t, key, hold_s))
+        if key == "1":
+            self.casts += 1
         if key in ("1", "f"):
             self.bobber = key == "1"
             self.cast_at = self.t
@@ -766,3 +771,46 @@ def test_config_written_on_windows_round_trips(tmp_path):
     assert b"\r\r" not in raw and b"[vision]" not in raw and b"[gui]" not in raw
     reloaded, _ = load_config(path)
     assert reloaded.game.cast_key == "2" and reloaded.run.cast_timeout_s == 22.0
+
+
+class _UiPond(_Pond):
+    """A pond whose screen also shows a gold UI gear (a minimap button, say) that matches better
+    than the bobber and never moves: pixel 200 marks it, pixel 100 marks the bobber."""
+
+    UI_XY = (180, 10)
+    BOBBER_XY = (60, 150)
+
+    def __init__(self, **kw) -> None:
+        super().__init__(**kw)
+        self.window = WindowRef("World of Warcraft", None, 0, 0, 200, 200)
+
+    def grab(self, box=None) -> np.ndarray:
+        frame = np.zeros((200, 200, 3), np.uint8)
+        frame[self.UI_XY[1], self.UI_XY[0]] = 200
+        if self.bobber:
+            frame[self.BOBBER_XY[1], self.BOBBER_XY[0]] = 100
+        if box is not None:
+            x, y, w, h = box
+            return frame[y : y + h, x : x + w]
+        return frame
+
+    def match(self, frame, region=None, full_width=None) -> IconMatch:
+        for value, score in ((200, 0.95), (100, 0.9)):
+            ys, xs = np.nonzero(frame[..., 0] == value)
+            if len(xs):
+                return IconMatch(score, int(xs[0]), int(ys[0]), 4, 1.0)
+        return IconMatch(0.0, -1, -1, 4, 0.0)
+
+
+def test_a_gear_that_never_moves_is_part_of_the_ui_not_the_bobber():
+    """A gold gear on the same pixel before two casts in a row is part of the UI. It may fool
+    the first cast; from the second on it is ignored, the real bobber is found, and caught
+    fish count as catches, not misses."""
+    _, lines = _fish(BehaviorConfig(), 1, pond=_UiPond(bite_after_s=3))
+    ignoring = [i for i, line in enumerate(lines) if line.startswith("Ignoring a gold gear")]
+    assert len(ignoring) == 1 and "(180, 10)" in lines[ignoring[0]]
+    after = lines[ignoring[0] :]
+    found = [line for line in after if line.startswith("Found the bobber at")]
+    assert len(found) >= 5 and all("(60, 150)" in line for line in found)
+    assert not any("did not go away" in line for line in after)
+    assert sum(line.startswith("Caught") for line in after) >= 5
