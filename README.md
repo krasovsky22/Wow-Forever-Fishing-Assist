@@ -40,8 +40,8 @@ It watches for your bobber, listens for the splash, and loots the catch.</p>
   addons: only pixels, sound and key presses.
 - 🔊 **Listens to the game alone.** On Windows 10 2004+ and Linux (PipeWire) it hears only
   WoW's audio, so music or videos can't drown out the splash.
-- 📏 **Measures the gear icon itself** on the first cast of every run, whatever your
-  resolution or UI scale.
+- 📏 **Finds the interact icon itself** on the first cast of every run, whatever your
+  resolution or UI scale, and whether your game shows the gold gear or the round anvil badge.
 - ⏱️ **Never gets stuck.** If a cast goes nowhere, it recasts after *Recast after* seconds,
   whatever it is doing.
 
@@ -99,8 +99,9 @@ They are not code-signed, so the first launch needs one extra step:
 1. *Options > Gameplay > Controls*: turn on **Auto Loot**.
 2. *Options > Keybindings > Targeting*: bind **Interact With Target**. The default is `f`.
 3. Put **Fishing** on an action bar key. The default is `1`.
-4. Type `/console SoftTargetIconGameObject 1` once. This shows the gold gear over your bobber
-   whenever it is close enough to interact with.
+4. Type `/console SoftTargetIconGameObject 1` once. This shows an icon over your bobber whenever
+   it is close enough to interact with: a gold gear, or on some clients a round badge with an
+   anvil. The bot finds either.
 5. *Options > Sound*: set **Ambience** and **Music** to 0, and keep **Sound Effects** up.
 
 Then, in the app's **Setup** tab, check the keys match, and press **Start fishing** on the
@@ -175,6 +176,7 @@ back to its default.
 | `game.session_minutes` | `0` | Stop after this many minutes; 0 runs until you stop it. |
 | `game.quit_key` | `""` | A key with a `/quit` macro. When the time limit runs out, the bot finishes the current cast, then presses it until the game closes (3 tries at most, waiting up to 30 s each). |
 | `run.cast_timeout_s` | `30` | **Recast after**: give up on a cast after this many seconds (5–120). Set it 1–2 s above how long a cast lasts in the game. |
+| `vision.icon_style` | `"auto"` | Which icon the game draws over the bobber: `"gear"`, `"badge"` (round, with an anvil), or `"auto"` to find either. |
 | `vision.catch_popup` | `true` | Also count a catch when the game shows its "YOUR CATCH" popup after Interact. |
 | `audio.bite_threshold` | `0.66` | How well a sound must match a splash to count as a bite. The Setup tab's bite check suggests a value. |
 | `audio.capture` | `"game"` | `"game"` hears only WoW; `"device"` hears the loopback device in `audio.device`. |
@@ -188,7 +190,7 @@ back to its default.
 | `wowfish gui` | Open the app. |
 | `wowfish run [--minutes N] [--recast-after S] [--record-audio WAV]` | Fish from the terminal until Ctrl-C or the time limit. |
 | `wowfish doctor` | Check the OS, display, OpenCV, audio, game window, input, calibration and config. |
-| `wowfish calibrate SHOT.png [--save]` | Measure the gear icon's size from a screenshot. |
+| `wowfish calibrate SHOT.png [--save]` | Measure the interact icon's size from a screenshot. |
 | `wowfish watch --live` / `--from DIR` | Show what the matcher sees, live or over saved frames. |
 | `wowfish listen [--list] [--device D] [--record WAV]` | Meter the game's audio and print bites as they are heard. |
 | `wowfish verify-bite WAV [--save]` | Score a recording against every splash clip and suggest a threshold. |
@@ -201,9 +203,9 @@ location.
 ## How it works
 
 1. **Cast.** It presses your cast key.
-2. **Find the bobber.** WoW draws a gold gear over the bobber when it is in interact range. The
-   bot finds it with masked template matching (OpenCV), checking its colour and its size. No
-   gear means the bobber is out of reach, so it recasts.
+2. **Find the bobber.** WoW draws an icon over the bobber when it is in interact range: a gold
+   gear, or a round anvil badge. The bot finds it with masked template matching (OpenCV),
+   checking its colour and its size. No icon means the bobber is out of reach, so it recasts.
 3. **Hear the bite.** WoW plays one of four splash sounds when a fish bites. The bot compares
    the game's audio with fingerprints of each (log-mel spectrograms with the volume factored
    out), then presses Interact, and Auto Loot does the rest.

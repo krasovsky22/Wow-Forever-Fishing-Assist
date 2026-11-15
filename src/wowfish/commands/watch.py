@@ -90,6 +90,7 @@ def watch(
     """Print phase, score, and position for every frame; shows what the bot would see."""
     import cv2
 
+    from wowfish.assets import style_of
     from wowfish.vision.annotate import annotate_match
     from wowfish.vision.calibrate import calibrate_icon_scale
     from wowfish.vision.matcher import MIN_TEMPLATE_PX, IconMatcher
@@ -99,7 +100,7 @@ def watch(
     if (source is None) == (not live):
         fail("pass exactly one of --from PATH or --live")
     cfg = load_config_or_fail()
-    templates = load_icon_templates()
+    templates = load_icon_templates(cfg.vision.icon_style)
     threshold = cfg.vision.icon_threshold
     frames = _live_frames(title, fps, seconds) if live else _file_frames(source, fps)
     if save_frames:
@@ -110,6 +111,7 @@ def watch(
             started = time.perf_counter()
             if search is None:
                 size = cfg.vision.icon_size_px
+                style = style_of(cfg.vision.icon_native_size)
                 if size == 0:
                     cal = calibrate_icon_scale(frame, templates, match_width=cfg.vision.match_width)
                     if not cal.valid:
@@ -117,19 +119,22 @@ def watch(
                             f"t={t:7.2f}s not calibrated and no gold icon in this frame; waiting"
                         )
                         continue
-                    size = cal.icon_size_px
+                    size, style = cal.icon_size_px, cal.style
                     typer.echo(
                         f"not calibrated; using icon_size_px={size} from this frame "
                         f"(score {cal.score:.2f}); run `wowfish calibrate --save` to persist"
                     )
-                matcher = IconMatcher(template_for_size(templates, size), cfg.vision.match_width)
+                if style not in {t.style for t in templates}:
+                    style = None
+                chosen = template_for_size(templates, size, style)
+                matcher = IconMatcher(chosen, cfg.vision.match_width)
                 px = matcher.template_px(frame.shape[1])
                 if px < MIN_TEMPLATE_PX:
                     fail(
                         f"icon_size_px={size} is {px} px after downscaling this "
                         f"{frame.shape[1]}-wide frame to match_width={cfg.vision.match_width} "
                         f"(minimum {MIN_TEMPLATE_PX}); run `wowfish calibrate --save` on a "
-                        "screenshot with the gear icon visible"
+                        "screenshot with the interact icon visible"
                     )
                 search = IconSearch(matcher, threshold)
             phase, m = search.step(frame)

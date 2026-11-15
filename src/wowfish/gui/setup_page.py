@@ -19,7 +19,7 @@ STEPS = (
     ("Stand at the water", "with Fishing on an action bar key (the cast key)."),
     ("Bind Interact With Target", "Options > Keybindings > Targeting, to the interact key."),
     ("Turn on Auto Loot", "Options > Controls."),
-    ("Show the bobber's gear icon", "type /console SoftTargetIconGameObject 1 once."),
+    ("Show the icon over the bobber", "type /console SoftTargetIconGameObject 1 once."),
     ("Quiet the game", "set Ambience and Music to 0 so the splash is easy to hear."),
     ("Optional: a quit macro", "put /quit on a key and enter it as the quit key; the bot "
      "presses it when the time limit runs out."),
@@ -28,7 +28,8 @@ CHECKLIST_FOOTER = "Then press Start fishing on the Fish tab."
 RECAST_HINT = "Recast after: 1-2 s more than a cast lasts in the game."
 VERIFY_HINT = "Click, then fish by hand until a fish bites (records for 60 s)."
 CALIBRATE_HINT = (
-    f"Click, then cast in the game: it watches for the gold gear for up to {CALIBRATE_WATCH_S:g} s."
+    f"Click, then cast in the game: it watches for the interact icon for up to "
+    f"{CALIBRATE_WATCH_S:g} s."
 )
 NOTE_WRAP = 460
 
@@ -313,7 +314,7 @@ class SetupPage:
                         self.save_cal.configure(state="normal")
                     else:
                         self.cal_note.configure(
-                            text=f"No gold gear icon seen in {CALIBRATE_WATCH_S:g} s. "
+                            text=f"No interact icon seen in {CALIBRATE_WATCH_S:g} s. "
                             "Is SoftTargetIconGameObject on "
                             "and the bobber close enough to interact with? Try again."
                         )

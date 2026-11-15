@@ -47,6 +47,7 @@ class GameConfig:
 
 @dataclass(frozen=True)
 class VisionConfig:
+    icon_style: str = "auto"  # "auto": find whichever icon the game shows; "gear" | "badge"
     icon_size_px: int = 0
     icon_native_size: int = 0
     icon_threshold: float = 0.75
@@ -309,6 +310,11 @@ def _validate(path: Path, cfg: Config) -> None:
     check(v.match_width >= 320, "vision.match_width", "must be at least 320")
     check(v.icon_size_px >= 0, "vision.icon_size_px", "must be 0 or positive")
     check(v.icon_native_size >= 0, "vision.icon_native_size", "must be 0 or positive")
+    check(
+        v.icon_style in ("auto", "gear", "badge"),
+        "vision.icon_style",
+        'must be "auto", "gear" or "badge"',
+    )
     check(a.capture in ("game", "device"), "audio.capture", 'must be "game" or "device"')
     check(0.0 < a.bite_threshold <= 1.0, "audio.bite_threshold", "must be in (0, 1]")
     check(a.refractory_s >= 0.0, "audio.refractory_s", "must be 0 or positive")

@@ -288,7 +288,7 @@ class FishingEngine:
         self._change(
             State.CASTING,
             f"Pressed {key} to cast",
-            f"Looking for the gear icon over the bobber for up to {limit:g} s",
+            f"Looking for the interact icon over the bobber for up to {limit:g} s",
         )
 
     def _acquire(self, now: float) -> None:
@@ -313,7 +313,7 @@ class FishingEngine:
             self._icon_timeouts += 1
             if self._icon_timeouts >= RESWEEP_AFTER_TIMEOUTS:
                 self._sweeping = True
-            self._miss("No gear icon over the bobber")
+            self._miss("No interact icon over the bobber")
 
     def _scan_for_ui_gears(self) -> None:
         """Before a cast, note every gear-like match on screen. One that sits on the same pixel
@@ -688,8 +688,9 @@ def build_engine(
     from wowfish.audio.detector import detector_for
     from wowfish.audio.devices import open_capture
     from wowfish.input import get_input_device
+    from wowfish.vision.calibrate import calibrate_icon_scale
     from wowfish.vision.matcher import MIN_TEMPLATE_PX, IconMatcher
-    from wowfish.vision.template import load_icon_templates, template_for_size
+    from wowfish.vision.template import load_icon_templates, styles_in, template_for_size
 
     platform_problem = unsupported_platform()
     if platform_problem:
@@ -700,10 +701,27 @@ def build_engine(
     window = find_window(title)
     if window is None:
         raise RuntimeError(f"no window titled {title!r}; is the game running?")
-    templates = load_icon_templates()
+    templates = load_icon_templates(cfg.vision.icon_style)
+    # The icon style in use: fixed by the config, or (for "auto") the one the saved size came
+    # from, then whatever each run's calibration finds.
+    style = {"now": _starting_style(cfg)}
 
     def matcher_factory(size: int) -> IconMatcher:
-        return IconMatcher(template_for_size(templates, size), cfg.vision.match_width)
+        t = template_for_size(templates, size, style["now"])
+        return IconMatcher(t, cfg.vision.match_width)
+
+    def calibrate(frame: np.ndarray, *, match_width: int = 1920) -> Any:
+        """Calibrate the likeliest style first (each style costs seconds on a 4K frame), and
+        the others only if it finds nothing."""
+        styles = sorted(styles_in(templates), key=lambda st: st != style["now"])
+        cal = None
+        for st in styles:
+            mine = [t for t in templates if t.style == st]
+            cal = calibrate_icon_scale(frame, mine, match_width=match_width)
+            if cal.valid:
+                style["now"] = cal.style
+                return cal
+        return cal
 
     size = cfg.vision.icon_size_px
     if size > 0 and matcher_factory(size).template_px(window.width) < MIN_TEMPLATE_PX:
@@ -734,6 +752,7 @@ def build_engine(
         audio_source=audio,
         detector=detector,
         matcher_factory=matcher_factory,
+        calibrate=calibrate,
         on_calibrated=on_calibrated,
         find_window=lambda t=title: find_window(t),
         session_s=session_s,
@@ -744,7 +763,17 @@ def _real_calibrate(frame: np.ndarray, *, match_width: int = 1920) -> Any:
     from wowfish.vision.calibrate import calibrate_icon_scale
     from wowfish.vision.template import load_icon_templates
 
-    return calibrate_icon_scale(frame, load_icon_templates(), match_width=match_width)
+    return calibrate_icon_scale(frame, load_icon_templates("auto"), match_width=match_width)
+
+
+def _starting_style(cfg: Config) -> str | None:
+    """The icon style to match with before this run's first calibration: the configured one,
+    else the style of the saved sprite size (None: no saved size; calibrate first)."""
+    from wowfish.assets import style_of
+
+    if cfg.vision.icon_style != "auto":
+        return cfg.vision.icon_style
+    return style_of(cfg.vision.icon_native_size) or "gear"
 
 
 def _black_out(frame: np.ndarray, x: int, y: int, half: int) -> np.ndarray:
