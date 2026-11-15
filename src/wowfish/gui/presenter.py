@@ -35,7 +35,7 @@ def describe(event: ev.Event) -> str:
         case ev.IconFound(score=score, where=(x, y)):
             return f"Found the bobber at ({x}, {y}), score {score:.2f}"
         case ev.Calibrated(size=size, score=score):
-            return f"Measured the gear icon at {size} px (score {score:.2f})"
+            return f"Measured the interact icon at {size} px (score {score:.2f})"
         case ev.IconLost():
             return "Lost sight of the bobber"
         case ev.BiteHeard(clip=clip, score=score):
@@ -58,7 +58,7 @@ def describe(event: ev.Event) -> str:
                 "is part of the UI, not the bobber"
             )
         case ev.Timeout(what="icon", after_s=s):
-            return f"No gear icon within {s:g} s; recasting"
+            return f"No interact icon within {s:g} s; recasting"
         case ev.Timeout(what="bite", after_s=s, detail=detail) if detail:
             return f"No splash within {s:g} s; {detail}; recasting"
         case ev.Timeout(what="bite", after_s=s):
@@ -506,13 +506,13 @@ class Presenter:
                 raise RuntimeError("World of Warcraft window not found; is the game running?")
             cap = self._get_capturer(window)
             cap.open(window)
-            templates = load_icon_templates()
+            templates = load_icon_templates(self.cfg.vision.icon_style)
             deadline = time.monotonic() + CALIBRATE_WATCH_S
             try:
                 while True:  # until a frame shows the gear, so there is time to go and cast
                     left = max(0.0, deadline - time.monotonic())
                     self.calibrate_status = (
-                        f"Watching the game for the gold gear icon ({left:.0f} s left). "
+                        f"Watching the game for the interact icon ({left:.0f} s left). "
                         "Cast now and keep the game on screen."
                     )
                     frame = cap.grab()

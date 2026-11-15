@@ -13,6 +13,9 @@ session_minutes = 0
 quit_key = ""
 
 [vision]
+# Which icon the game draws over the bobber in reach: "gear" (the gold gear), "badge" (a round
+# icon with an anvil in a yellow ring), or "auto" to find whichever is there.
+icon_style = "auto"
 # On-screen size of the interact icon in pixels. 0 = not calibrated; `wowfish calibrate` sets it.
 icon_size_px = 0
 icon_native_size = 0

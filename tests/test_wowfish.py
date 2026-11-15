@@ -893,3 +893,67 @@ def popup_template_path():
     from wowfish.vision.catch_popup import template_path
 
     return template_path()
+
+
+def _badge_scene(scale: float) -> np.ndarray:
+    """Grey-blue water with the bundled anvil badge drawn on it at `scale`."""
+    import cv2
+
+    from wowfish.assets import icon_path
+
+    rgba = cv2.imread(str(icon_path(52)), cv2.IMREAD_UNCHANGED)
+    rgba = cv2.resize(rgba, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+    rng = np.random.default_rng(3)
+    frame = (np.array([120, 112, 100]) + rng.normal(0, 6, (600, 800, 3))).clip(0, 255)
+    frame = frame.astype(np.uint8)
+    h, w = rgba.shape[:2]
+    alpha = rgba[:, :, 3:4].astype(np.float32) / 255
+    roi = frame[300 : 300 + h, 400 : 400 + w].astype(np.float32)
+    frame[300 : 300 + h, 400 : 400 + w] = (alpha * rgba[:, :, :3] + (1 - alpha) * roi).astype(
+        np.uint8
+    )
+    return frame
+
+
+def test_auto_calibration_finds_the_anvil_badge():
+    """Clients that draw a round anvil badge over the bobber instead of the gold gear: the gear
+    templates find nothing there, "auto" finds the badge at its size and spot."""
+    from wowfish.vision.calibrate import calibrate_icon_scale
+    from wowfish.vision.template import load_icon_templates
+
+    for scale in (1.0, 1.5):
+        frame = _badge_scene(scale)
+        side = round(52 * scale)
+        gear = calibrate_icon_scale(frame, load_icon_templates("gear"))
+        assert not gear.valid
+        cal = calibrate_icon_scale(frame, load_icon_templates("auto"))
+        assert cal.valid and cal.style == "badge", (scale, cal)
+        assert abs(cal.icon_size_px - side) <= side * 0.15
+        assert abs(cal.x - (400 + side / 2)) <= 4 and abs(cal.y - (300 + side / 2)) <= 4
+
+
+def test_icon_style_setting():
+    """vision.icon_style picks the icon; "auto" starts from the style of the saved size."""
+    from wowfish.engine.engine import _starting_style
+
+    def cfg(**vision):
+        return Config(game=GameConfig(), vision=VisionConfig(**vision), audio=AudioConfig())
+
+    assert cfg().vision.icon_style == "auto"
+    assert _starting_style(cfg()) == "gear"
+    assert _starting_style(cfg(icon_native_size=52)) == "badge"
+    assert _starting_style(cfg(icon_native_size=42)) == "gear"
+    assert _starting_style(cfg(icon_style="badge", icon_native_size=42)) == "badge"
+
+
+def test_icon_style_is_validated(tmp_path):
+    path = tmp_path / "config.toml"
+    path.write_text('[vision]\nicon_style = "badge"\n', encoding="utf-8")
+    assert load_config(path)[0].vision.icon_style == "badge"
+    path.write_text('[vision]\nicon_style = "anvil"\n', encoding="utf-8")
+    try:
+        load_config(path)
+    except Exception as e:
+        assert "vision.icon_style" in str(e)
+    else:
+        raise AssertionError("an unknown icon style was accepted")

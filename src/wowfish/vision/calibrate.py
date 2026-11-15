@@ -9,7 +9,7 @@ import numpy as np
 
 from wowfish.vision.matcher import GOLD_MIN, NO_MATCH, IconMatch, IconMatcher
 from wowfish.vision.region import Region
-from wowfish.vision.template import IconTemplate, template_for_size
+from wowfish.vision.template import IconTemplate, styles_in, template_for_size
 
 # Dense enough that every size is within ~15% of a probe: a gear's score falls >= 0.25 at 0.8x
 # its size (see OFF_SCALE), so a sparse grid (20, 32, ...) missed a 26 px gear entirely.
@@ -33,6 +33,7 @@ class Calibration:
     y: int
     gold: float = 0.0
     prominence: float = 0.0  # score minus the best score at OFF_SCALE sizes, same spot
+    style: str = "gear"  # which icon was found: "gear" or "badge"
 
     @property
     def valid(self) -> bool:
@@ -60,6 +61,28 @@ def calibrate_icon_scale(
     probe_sizes: Sequence[int] = PROBE_SIZES,
     anchors: int = ANCHORS,
 ) -> Calibration:
+    """Calibrate every icon style in `templates` and keep the best: a valid result over an
+    invalid one, then the higher score."""
+    results = [
+        _calibrate_style(
+            frame_bgr, templates, style, sizes=sizes, match_width=match_width,
+            probe_sizes=probe_sizes, anchors=anchors,
+        )
+        for style in styles_in(templates)
+    ]  # fmt: skip
+    return max(results, key=lambda c: (c.valid, c.score))
+
+
+def _calibrate_style(
+    frame_bgr: np.ndarray,
+    templates: Sequence[IconTemplate],
+    style: str,
+    *,
+    sizes: Iterable[int],
+    match_width: int,
+    probe_sizes: Sequence[int],
+    anchors: int,
+) -> Calibration:
     """Locate candidate spots with a few probe sizes, then sweep every size around each.
 
     Match scores are only comparable across template sizes within a small window, and a tiny
@@ -75,7 +98,8 @@ def calibrate_icon_scale(
     pad = max(sizes) + 48
 
     def run(side: int, region: Region | None = None) -> IconMatch:
-        return IconMatcher(template_for_size(templates, side), match_width).match(frame_bgr, region)
+        t = template_for_size(templates, side, style)
+        return IconMatcher(t, match_width).match(frame_bgr, region)
 
     probes = sorted((run(s) for s in probe_sizes), key=_ranked, reverse=True)
     spots: list[tuple[int, int]] = []
@@ -106,5 +130,5 @@ def calibrate_icon_scale(
     off = [run(max(1, round(best_side * k)), best_region).score for k in OFF_SCALE]
     off = [s for s in off if s > NO_MATCH]
     prominence = best.score - max(off) if off and best.score > NO_MATCH else 0.0
-    native = template_for_size(templates, best_side).native_size
-    return Calibration(best_side, native, best.score, best.x, best.y, best.gold, prominence)
+    native = template_for_size(templates, best_side, style).native_size
+    return Calibration(best_side, native, best.score, best.x, best.y, best.gold, prominence, style)

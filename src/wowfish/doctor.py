@@ -200,7 +200,8 @@ def probe_calibration() -> ProbeResult:
     from wowfish.vision.matcher import MIN_TEMPLATE_PX
 
     hint = (
-        "run `wowfish calibrate --save` on a screenshot showing the gear icon (or the GUI's Setup)"
+        "run `wowfish calibrate --save` on a screenshot showing the interact icon "
+        "(or the GUI's Setup)"
     )
     try:
         cfg, _ = load_config()

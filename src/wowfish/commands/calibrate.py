@@ -16,7 +16,11 @@ from wowfish.config import save_config
 def calibrate(
     screenshot: Annotated[
         Path,
-        typer.Argument(exists=True, dir_okay=False, help="Screenshot showing the gold gear icon."),
+        typer.Argument(
+            exists=True,
+            dir_okay=False,
+            help="Screenshot showing the interact icon over the bobber.",
+        ),
     ],
     save: bool = typer.Option(False, "--save", help="Write the result into the config file."),
 ) -> None:
@@ -30,10 +34,12 @@ def calibrate(
     frame = cv2.imread(str(screenshot))
     if frame is None:
         fail(f"cannot read image {screenshot}")
-    cal = calibrate_icon_scale(frame, load_icon_templates(), match_width=cfg.vision.match_width)
+    templates = load_icon_templates(cfg.vision.icon_style)
+    cal = calibrate_icon_scale(frame, templates, match_width=cfg.vision.match_width)
     h, w = frame.shape[:2]
     typer.echo(
-        f"icon_size_px={cal.icon_size_px} native={cal.native_size} score={cal.score:.3f} "
+        f"icon_style={cal.style} icon_size_px={cal.icon_size_px} native={cal.native_size} "
+        f"score={cal.score:.3f} "
         f"at ({cal.x}, {cal.y}) in {w}x{h}"
     )
     threshold = cal.suggested_threshold()
@@ -41,7 +47,7 @@ def calibrate(
     if not cal.valid:
         typer.echo(
             "warning: no gold interact icon found in this screenshot (take it with the bobber in "
-            "range, gear icon visible)",
+            "range, its interact icon visible)",
             err=True,
         )
         if save:
