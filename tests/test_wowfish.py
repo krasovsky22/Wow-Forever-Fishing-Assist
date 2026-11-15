@@ -814,3 +814,82 @@ def test_a_gear_that_never_moves_is_part_of_the_ui_not_the_bobber():
     assert len(found) >= 5 and all("(60, 150)" in line for line in found)
     assert not any("did not go away" in line for line in after)
     assert sum(line.startswith("Caught") for line in after) >= 5
+
+
+class _StuckGearPond(_Pond):
+    """A pond where the tracked gear stays after Interact (the bot is watching a UI gear, or
+    the loot is slow), but the game shows its "YOUR CATCH" popup when a fish is looted."""
+
+    def __init__(self, **kw) -> None:
+        super().__init__(**kw)
+        self.popup_up = False
+
+    def press_key(self, key: str, hold_s: float) -> None:
+        if key == "f":
+            self.pressed.append((self.t, key, hold_s))
+            self.popup_up = True  # caught: the popup shows, the gear stays
+            return
+        self.popup_up = False if key == "1" else self.popup_up
+        super().press_key(key, hold_s)
+
+    def seen(self, frame) -> bool:  # the popup detector
+        return self.popup_up
+
+
+def _fish_with_popup(pond: _Pond, minutes: float, popup: object) -> list[str]:
+    cfg = Config(game=GameConfig(), vision=VisionConfig(), audio=AudioConfig())
+    engine = FishingEngine(
+        cfg, pond.window,
+        capturer=pond, input_device=pond, audio_source=pond, detector=pond, matcher=pond,
+        find_window=pond.find, clock=pond.clock, sleep=pond.sleep, rng=random.Random(7),
+        catch_popup=popup,
+    )  # fmt: skip
+    while pond.t < minutes * 60:
+        engine.step()
+    return [describe(e) for e in engine.events.queue]
+
+
+def test_the_catch_popup_counts_as_a_catch():
+    """After Interact, the game's "YOUR CATCH" popup counts the fish even while the tracked
+    gear stays on screen; without the popup check those casts are misses."""
+    pond = _StuckGearPond(bite_after_s=3)
+    lines = _fish_with_popup(pond, 1, popup=pond)
+    assert sum(line == "Caught a fish; the catch popup showed" for line in lines) >= 5
+    assert not any("did not go away" in line for line in lines)
+
+    pond = _StuckGearPond(bite_after_s=3)
+    lines = _fish_with_popup(pond, 1, popup=SimpleNamespace(seen=lambda frame: False))
+    assert not any(line.startswith("Caught") for line in lines)
+    assert any("did not go away" in line for line in lines)
+
+
+def test_a_popup_left_from_the_last_fish_does_not_count():
+    """A popup already up when Interact is pressed says nothing about this cast."""
+    pond = _StuckGearPond(bite_after_s=3)
+    always = SimpleNamespace(seen=lambda frame: True)
+    lines = _fish_with_popup(pond, 0.5, popup=always)
+    assert not any("the catch popup showed" in line for line in lines)
+
+
+def test_catch_popup_detector_on_a_real_screenshot():
+    """The detector finds the header in the screenshot it was cut from, at other UI scales on
+    a 4K frame, and nothing once the popup is painted over."""
+    import cv2
+
+    from wowfish.vision.catch_popup import CatchPopup
+
+    popup = CatchPopup()
+    template = cv2.imread(str(popup_template_path()), cv2.IMREAD_COLOR)
+    frame = np.full((2160, 3840, 3), (60, 70, 70), np.uint8)
+    for scale in (1.0, 2.0):
+        shown = cv2.resize(template, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+        canvas = frame.copy()
+        canvas[1000 : 1000 + shown.shape[0], 2000 : 2000 + shown.shape[1]] = shown
+        assert popup.seen(canvas), scale
+    assert not popup.seen(frame)
+
+
+def popup_template_path():
+    from wowfish.vision.catch_popup import template_path
+
+    return template_path()

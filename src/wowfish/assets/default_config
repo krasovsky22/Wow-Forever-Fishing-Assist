@@ -20,6 +20,9 @@ icon_native_size = 0
 icon_threshold = 0.75
 # Frames wider than this are downscaled before matching.
 match_width = 1920
+# Also count a catch when the game shows its "YOUR CATCH" popup after Interact, even if the
+# bobber still seems to be there.
+catch_popup = true
 
 [audio]
 # "game": hear only the game's own audio stream (Linux PipeWire, Windows 10 2004+), so music or

@@ -13,6 +13,7 @@ from typing import Any
 
 import cv2
 import numpy as np
+from loguru import logger
 
 from wowfish.audio import AudioChunk
 from wowfish.audio._threaded import ThreadedSource
@@ -74,6 +75,7 @@ class FishingEngine:
         session_s: float | None = None,
         box_interval_s: float = 0.25,
         lost_after: int = 3,
+        catch_popup: Any = None,
     ) -> None:
         self.cfg = cfg
         self.window = window
@@ -101,6 +103,8 @@ class FishingEngine:
         self.session_s = cfg.game.session_minutes * 60.0 if session_s is None else session_s
         self.box_interval_s = box_interval_s
         self.lost_after = lost_after
+        self.popup = catch_popup if catch_popup is not None else _real_popup(cfg)
+        self._popup_before = False  # the popup was already up when Interact was pressed
 
         self.events: queue.Queue[ev.Event] = queue.Queue()
         self.state = State.IDLE
@@ -396,6 +400,8 @@ class FishingEngine:
 
     def _interact(self, bite: Any) -> None:
         key = self.cfg.game.interact_key
+        # A popup still up from the last fish must not count this one as caught.
+        self._popup_before = self._popup_shows(ignore_before=True)
         self._press(key, "bite")
         self._t_interact = self._clock()
         self._last_box_grab = -math.inf
@@ -407,19 +413,34 @@ class FishingEngine:
 
     def _after_interact(self, now: float) -> None:
         seen = self._track(now)
-        if seen is False:
+        popup = seen is True and self._popup_shows()
+        if seen is False or popup:
             self.stats = ev.Stats(
                 self._t(), self.stats.casts, self.stats.catches + 1, self.stats.misses,
                 self.stats.bites_heard, self._elapsed(),
             )  # fmt: skip
-            self._emit(ev.Caught(self._t()))
-            self._pause_then_idle("Caught something; the bobber is gone")
+            self._emit(ev.Caught(self._t(), by_popup=popup))
+            self._pause_then_idle(
+                "Caught a fish; the catch popup showed" if popup
+                else "Caught something; the bobber is gone"
+            )  # fmt: skip
             return
         if now - self._t_interact > self.cfg.run.loot_timeout_s:
             self._emit(ev.Timeout(self._t(), "loot", self.cfg.run.loot_timeout_s))
             self._miss("The bobber did not go away after Interact")
 
     # -- helpers -----------------------------------------------------------------------------
+
+    def _popup_shows(self, *, ignore_before: bool = False) -> bool:
+        """True when the game's "YOUR CATCH" popup is on screen (and was not already up when
+        Interact was pressed). Never raises: a failed look is just "not seen"."""
+        if self.popup is None or (self._popup_before and not ignore_before):
+            return False
+        try:
+            return bool(self.popup.seen(self.capturer.grab()))
+        except Exception as e:  # a capture hiccup must not stop the run
+            logger.debug(f"catch popup check failed: {e}")
+            return False
 
     def _track(self, now: float) -> bool | None:
         """Grab the box around the icon (at most every box_interval_s) and look for it there.
@@ -732,3 +753,16 @@ def _black_out(frame: np.ndarray, x: int, y: int, half: int) -> np.ndarray:
     h, w = out.shape[:2]
     out[max(0, y - half) : min(h, y + half), max(0, x - half) : min(w, x + half)] = 0
     return out
+
+
+def _real_popup(cfg: Config) -> Any:
+    """The "YOUR CATCH" popup detector, or None when switched off or unavailable."""
+    if not cfg.vision.catch_popup:
+        return None
+    try:
+        from wowfish.vision.catch_popup import CatchPopup
+
+        return CatchPopup()
+    except Exception as e:  # a missing template only loses this extra check
+        logger.warning(f"catch popup check unavailable: {e}")
+        return None
