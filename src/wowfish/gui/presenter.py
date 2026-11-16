@@ -9,6 +9,7 @@ import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -214,6 +215,17 @@ class Presenter:
 
     def reload(self) -> None:
         self.cfg = load_config()[0]
+
+    def reset_config(self) -> Path | None:
+        """Every setting back to its default (the old file is kept as config.toml.bak).
+        Refused while fishing: the running bot would save its icon measurement over it."""
+        from wowfish.config import reset_config_file
+
+        if self.running:
+            raise RuntimeError("stop fishing first")
+        backup = reset_config_file()
+        self.reload()
+        return backup
 
     def save_keys(self, cast_key: str, interact_key: str, quit_key: str = "") -> None:
         cast, interact = keys.normalize_key(cast_key), keys.normalize_key(interact_key)

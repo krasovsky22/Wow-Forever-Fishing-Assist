@@ -111,15 +111,7 @@ class SetupPage:
         body.columnconfigure(0, weight=1)
         self.devices = presenter.audio_devices()
         self.device = tb.Combobox(body, values=[d.name for d in self.devices], state="readonly")
-        current = presenter.cfg.audio.device
-        pick = next(
-            (i for i, d in enumerate(self.devices) if current and current in (d.id, d.name)), None
-        )
-        if pick is None:
-            default = presenter.default_device()
-            pick = self.devices.index(default) if default in self.devices else None
-        if pick is not None:
-            self.device.current(pick)
+        self._pick_device()
         self.device.grid(row=0, column=0, sticky="ew")
         tb.Button(
             body, text="Use and listen", command=self._save_device, bootstyle="secondary"
@@ -180,6 +172,41 @@ class SetupPage:
         self.cal_image = tb.Label(body, style="Card.TLabel")
         self.cal_image.pack(anchor="w", pady=(8, 0))
         self._photo = None
+
+    def _pick_device(self) -> None:
+        """Select the configured audio device in the list, else the system default."""
+        current = self.p.cfg.audio.device
+        pick = next(
+            (i for i, d in enumerate(self.devices) if current and current in (d.id, d.name)), None
+        )
+        if pick is None:
+            default = self.p.default_device()
+            pick = self.devices.index(default) if default in self.devices else None
+        if pick is not None:
+            self.device.current(pick)
+
+    def load_values(self) -> None:
+        """Show the presenter's settings in every field (after a reset)."""
+        cfg = self.p.cfg
+        for entry, value in (
+            (self.cast, cfg.game.cast_key),
+            (self.interact, cfg.game.interact_key),
+            (self.quit, cfg.game.quit_key),
+            (self.bite, f"{cfg.audio.bite_threshold:.2f}"),
+        ):
+            entry.delete(0, "end")
+            entry.insert(0, value)
+        self.minutes.set(cfg.game.session_minutes)
+        self.recast.set(f"{cfg.run.cast_timeout_s:g}")
+        self.mini_bar.set(cfg.gui.mini_bar)
+        self._pick_device()
+        self.keys_note.configure(text=RECAST_HINT)
+        size = cfg.vision.icon_size_px
+        current = f"Saved: {size} px. " if size > 0 else "Not calibrated yet. "
+        self.cal_note.configure(text=current + CALIBRATE_HINT)
+        self.cal_image.configure(image="")
+        self._photo = None
+        self.save_cal.configure(state="disabled")
 
     @staticmethod
     def _field(

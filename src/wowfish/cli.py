@@ -81,15 +81,32 @@ def main() -> None:
 @app.command()
 def config(
     path_only: bool = typer.Option(False, "--path", help="Print only the config file path."),
+    reset: bool = typer.Option(
+        False, "--reset", help="Put every setting back to its default (keeps a .bak copy)."
+    ),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Do not ask before --reset."),
 ) -> None:
     """Show the config file location and its resolved contents."""
     from wowfish import paths
-    from wowfish.config import ConfigError, ensure_config_file, load_config, to_toml
+    from wowfish.config import (
+        ConfigError,
+        ensure_config_file,
+        load_config,
+        reset_config_file,
+        to_toml,
+    )
 
     cfg_path = paths.config_file()
     if path_only:
         typer.echo(str(cfg_path))
         return
+    if reset:
+        if not yes and not typer.confirm(f"Put every setting in {cfg_path} back to its default?"):
+            raise typer.Exit(code=1)
+        backup = reset_config_file(cfg_path)
+        typer.echo(
+            f"reset {cfg_path} to defaults" + (f"; old settings in {backup}" if backup else "")
+        )
     if ensure_config_file(cfg_path):
         typer.echo(f"created {cfg_path} with defaults")
     try:

@@ -957,3 +957,31 @@ def test_icon_style_is_validated(tmp_path):
         assert "vision.icon_style" in str(e)
     else:
         raise AssertionError("an unknown icon style was accepted")
+
+
+def test_reset_settings(tmp_path, monkeypatch):
+    """Reset puts every setting back to its default and keeps the old file as a .bak; it is
+    refused while fishing."""
+    from wowfish.config import reset_config_file
+
+    path = tmp_path / "config.toml"
+    assert reset_config_file(path) is None and path.exists()  # nothing to back up yet
+    path.write_text('[game]\ncast_key = "2"\n[vision]\nicon_size_px = 23\n', encoding="utf-8")
+    backup = reset_config_file(path)
+    assert backup == tmp_path / "config.toml.bak"
+    assert 'cast_key = "2"' in backup.read_text(encoding="utf-8")
+    cfg, _ = load_config(path)
+    assert cfg == Config(game=GameConfig(), vision=VisionConfig(), audio=AudioConfig())
+
+    monkeypatch.setenv("WOWFISH_HOME", str(tmp_path / "home"))
+    p = Presenter(build_engine=lambda *a, **k: None, list_devices=lambda: [],
+                  find_window=lambda *a: None)  # fmt: skip
+    p.save_cast_timeout("22")
+    assert p.reset_config() is not None and p.cfg.run.cast_timeout_s == 30.0
+    monkeypatch.setattr(Presenter, "running", property(lambda self: True))
+    try:
+        p.reset_config()
+    except RuntimeError as e:
+        assert "stop fishing" in str(e)
+    else:
+        raise AssertionError("reset while fishing was allowed")

@@ -125,6 +125,19 @@ def ensure_config_file(path: Path | None = None) -> bool:
     return True
 
 
+def reset_config_file(path: Path | None = None) -> Path | None:
+    """Put every setting back to its default: the old file is kept beside it as
+    config.toml.bak (replacing an older backup), and a fresh default_config is written.
+    Returns the backup's path, or None when there was no file to back up."""
+    path = path or paths.config_file()
+    backup = None
+    if path.exists():
+        backup = path.with_name(path.name + ".bak")
+        os.replace(path, backup)
+    ensure_config_file(path)
+    return backup
+
+
 def add_missing_settings(path: Path | None = None) -> list[str]:
     """Add the settings a newer release introduced to an existing config file, each with its
     comment from default_config, and return what was added ("game.quit_key", "[behavior]").

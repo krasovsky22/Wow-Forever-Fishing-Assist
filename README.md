@@ -163,7 +163,8 @@ on a real Mac.
 
 Most settings are on the **Setup** tab. All of them live in one TOML file;
 `wowfish config --path` prints where, and `wowfish config` prints its values. Delete a line to go
-back to its default.
+back to its default, or press **Reset settings** (top right of the app) or run
+`wowfish config --reset` to put everything back; the old file is kept as `config.toml.bak`.
 
 <p align="center">
   <img src="docs/screenshots/setup-tab.png" alt="The Setup tab: checklist, keys and timing, audio, and gear icon calibration" width="640" />
@@ -194,7 +195,7 @@ back to its default.
 | `wowfish watch --live` / `--from DIR` | Show what the matcher sees, live or over saved frames. |
 | `wowfish listen [--list] [--device D] [--record WAV]` | Meter the game's audio and print bites as they are heard. |
 | `wowfish verify-bite WAV [--save]` | Score a recording against every splash clip and suggest a threshold. |
-| `wowfish config [--path]` | Create the config file if needed and print it, or only its location. |
+| `wowfish config [--path] [--reset]` | Create the config file if needed and print it, print only its location, or reset every setting (keeping a `.bak`). |
 | `wowfish --version` | Print the version. |
 
 Add `--verbose` before any command for debug logging; `wowfish doctor` prints the log file's
