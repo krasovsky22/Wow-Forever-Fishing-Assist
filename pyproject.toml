@@ -19,6 +19,8 @@ dependencies = [
   "python-xlib>=0.33 ; sys_platform == 'linux'",
   "ttkbootstrap>=2,<3",
   "tomlkit>=0.15,<1",
+  "truststore>=0.10,<1",
+  "certifi>=2024.2.2",
 ]
 
 [project.optional-dependencies]

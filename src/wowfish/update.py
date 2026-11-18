@@ -335,18 +335,40 @@ _CA_FILES = (
 
 
 def _ssl_context() -> Any:
-    """The default TLS context, plus the system's CA file when the bundled OpenSSL found no
-    certificates (a frozen Python can look for them in its build machine's paths)."""
+    """A TLS context that trusts what the operating system trusts.
+
+    truststore hands certificate checks to the OS (Windows CryptoAPI, macOS Security, the
+    system CA file on Linux). Python's own OpenSSL only sees the roots Windows has already
+    stored, and Windows fetches the rest on demand, so GitHub could fail with "unable to get
+    issuer certificate". Without truststore, fall back to OpenSSL with the system CA file or
+    certifi's bundle when it found no certificates (a frozen Python looks for them in its
+    build machine's paths).
+    """
     import ssl
 
+    try:
+        import truststore
+
+        return truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    except Exception:  # missing, or an OS it cannot use: plain OpenSSL below
+        pass
     ctx = ssl.create_default_context()
     if ctx.cert_store_stats().get("x509_ca", 0) == 0:
-        for path in _CA_FILES:
-            if os.path.isfile(path):
+        for path in (*_CA_FILES, _certifi_file()):
+            if path and os.path.isfile(path):
                 with contextlib.suppress(ssl.SSLError, OSError):
                     ctx.load_verify_locations(cafile=path)
                     break
     return ctx
+
+
+def _certifi_file() -> str | None:
+    try:
+        import certifi
+
+        return certifi.where()
+    except Exception:
+        return None
 
 
 def _old_path(exe: Path) -> Path:
