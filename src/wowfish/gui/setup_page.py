@@ -113,6 +113,13 @@ class SetupPage:
         self.keys_note.configure(wraplength=360)
         self.keys_note.grid(row=6, column=0, columnspan=3, sticky="w", pady=(8, 0))
 
+        reset_row = tb.Frame(left)
+        reset_row.pack(fill="x", pady=(14, 0))
+        self.reset_button = tb.Button(
+            reset_row, text="Reset settings", command=self._reset_settings, bootstyle="secondary"
+        )
+        self.reset_button.pack(side="right")
+
         # -- audio ----------------------------------------------------------------------------
         audio, body = theme.card(right, "Audio", "What the bot listens to for the splash.")
         audio.pack(fill="x")
@@ -323,9 +330,37 @@ class SetupPage:
         self.p.save_calibration()
         self.cal_note.configure(text=self.cal_note.cget("text") + "  (saved)")
 
+    def _reset_settings(self) -> None:
+        """Ask, then put every setting back to its default; the old file is kept as a .bak."""
+        from tkinter import messagebox
+
+        if self.p.running:
+            messagebox.showinfo("Reset settings", "Stop fishing first.", parent=self.frame)
+            return
+        sure = messagebox.askyesno(
+            "Reset settings",
+            "Put every setting back to its default?\n\nKeys, time limits, the audio device, "
+            "the bite threshold and the icon calibration all go back to their defaults. Your "
+            "current settings are kept as a backup (config.toml.bak).",
+            icon="warning",
+            parent=self.frame,
+        )
+        if not sure:
+            return
+        try:
+            backup = self.p.reset_config()
+        except (OSError, RuntimeError) as e:
+            messagebox.showerror("Reset settings", f"Could not reset: {e}", parent=self.frame)
+            return
+        self.load_values()
+        kept = f"\n\nYour old settings are in {backup}." if backup else ""
+        messagebox.showinfo("Reset settings", "Settings are back to their defaults." + kept,
+                            parent=self.frame)  # fmt: skip
+
     # -- rendering --------------------------------------------------------------------------
 
     def render(self, view: View) -> None:
+        self.reset_button.configure(state="disabled" if view.running else "normal")
         pct = max(0.0, min(100.0, (view.level_dbfs + 60.0) / 60.0 * 100.0))
         self.meter.configure(value=pct)
         if not view.listening:

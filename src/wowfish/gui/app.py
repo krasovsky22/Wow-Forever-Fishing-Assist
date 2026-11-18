@@ -35,10 +35,6 @@ class App:
             tb.Label(bar, image=self._icons[1], background=theme.BG).pack(side="left", padx=(0, 10))
         tb.Label(bar, text=APP_NAME, style="Brand.TLabel").pack(side="left")
         tb.Label(bar, text=f"  v{__version__}", style="Muted.TLabel").pack(side="left", pady=(6, 0))
-        self.reset_button = tb.Button(
-            bar, text="Reset settings", command=self._reset_settings, bootstyle="secondary"
-        )
-        self.reset_button.pack(side="right", pady=(4, 0))
         self.update_button = tb.Button(
             bar, text="Check for updates", command=self._check_updates, bootstyle="secondary"
         )
@@ -83,7 +79,6 @@ class App:
         elif self._was_running and not view.running:
             self._fishing_stopped()
         self._was_running = view.running
-        self.reset_button.configure(state="disabled" if view.running else "normal")
         self.updater.poll()
         if self.root is None:  # the updater closed the app to restart it
             return
@@ -91,33 +86,6 @@ class App:
         self.update_button.configure(state="disabled" if busy else "normal")
         if self.bar is not None:
             self.bar.render(view.state, view.did, view.stats_values)
-
-    def _reset_settings(self) -> None:
-        """Ask, then put every setting back to its default; the old file is kept as a .bak."""
-        from tkinter import messagebox
-
-        if self.p.running:
-            messagebox.showinfo("Reset settings", "Stop fishing first.", parent=self.root)
-            return
-        sure = messagebox.askyesno(
-            "Reset settings",
-            "Put every setting back to its default?\n\nKeys, time limits, the audio device, "
-            "the bite threshold and the icon calibration all go back to their defaults. Your "
-            "current settings are kept as a backup (config.toml.bak).",
-            icon="warning",
-            parent=self.root,
-        )
-        if not sure:
-            return
-        try:
-            backup = self.p.reset_config()
-        except (OSError, RuntimeError) as e:
-            messagebox.showerror("Reset settings", f"Could not reset: {e}", parent=self.root)
-            return
-        self.setup.load_values()
-        kept = f"\n\nYour old settings are in {backup}." if backup else ""
-        messagebox.showinfo("Reset settings", "Settings are back to their defaults." + kept,
-                            parent=self.root)  # fmt: skip
 
     def _fishing_started(self) -> None:
         """The game gets the screen; a mini bar over it keeps Stop and the numbers in reach.
