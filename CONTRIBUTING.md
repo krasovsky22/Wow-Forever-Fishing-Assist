@@ -52,10 +52,13 @@ this automatically.
 - The version is not written anywhere in the repo. hatch-vcs derives it from the latest git
   tag when the package is installed: a tagged commit gets exactly that version, later commits
   get a dev version such as `1.0.0b2.dev3+g1a2b3c4`. `wowfish --version` shows it.
-- To cut a release, tag the commit and push the tag:
-  `git tag v<version> && git push origin v<version>`. The release workflow checks that the
-  package assets are present, builds three executables, and publishes a GitHub Release
-  (marked prerelease for a/b/rc versions).
+- Every merge into `master` is released automatically: the auto-release workflow bumps the
+  minor version of the newest stable tag (`v1.0.0` -> `v1.1.0`), pushes the tag, and runs
+  the release workflow, which publishes the GitHub Release.
+- To cut any other release (a patch, a major, or an a/b/rc prerelease), tag the commit and
+  push the tag: `git tag v<version> && git push origin v<version>`. The release workflow
+  checks that the package assets are present, builds three executables, and creates a draft
+  GitHub Release (marked prerelease for a/b/rc versions) to review and publish.
 
 ## Updating the bundled clips or sprites
 
