@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="assets/logo.svg" alt="WoW Fishing Assist logo: a gold-edged shield with a sunset over water, a castle, a fishing float and a gold gear" width="128" />
+<img src="assets/logo.svg" alt="WoW Forever Fishing Assist logo: a gold-edged shield with a sunset over water, a castle, a fishing float and a gold gear" width="128" />
 
-<h1>WoW Fishing Assist</h1>
+<h1>WoW Forever Fishing Assist</h1>
 
 <p><strong>Hands-free fishing for World of Warcraft.</strong><br />
 It watches for your bobber, listens for the splash, and loots the catch.</p>
@@ -225,7 +225,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the layout of the code.
 
 ## Credits and license
 
-WoW Fishing Assist is built on [wowfish](https://github.com/rsamf/wow-fishing-forever) by
+WoW Forever Fishing Assist is built on [wowfish](https://github.com/rsamf/wow-fishing-forever) by
 Richard Franklin. It adds the recast deadline, the new look, the mini bar and focusing the game
 on Start.
 
