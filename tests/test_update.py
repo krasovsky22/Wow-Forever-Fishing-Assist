@@ -447,3 +447,30 @@ def test_updater_failed_download_offers_the_page(tmp_path, on_windows):
     assert u.ui.messages[0][0] == "ask" and "the download failed" in u.ui.messages[0][1]
     assert events.pages == [release.page_url]
     assert events.quit == 0
+
+
+def test_ssl_context_trusts_the_operating_system(monkeypatch):
+    """GitHub is checked against the OS trust store (Windows fetches missing roots on demand,
+    which plain OpenSSL cannot); without truststore, certifi's bundle backs up OpenSSL."""
+    import builtins
+    import ssl
+
+    import truststore
+
+    ctx = up._ssl_context()
+    assert isinstance(ctx, truststore.SSLContext)
+    assert ctx.verify_mode == ssl.CERT_REQUIRED and ctx.check_hostname
+
+    real_import = builtins.__import__
+
+    def no_truststore(name, *args, **kwargs):
+        if name == "truststore":
+            raise ImportError(name)
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", no_truststore)
+    monkeypatch.setattr(up, "_CA_FILES", ())
+    monkeypatch.setattr(ssl.SSLContext, "load_default_certs", lambda self, purpose=None: None)
+    ctx = up._ssl_context()
+    assert not isinstance(ctx, truststore.SSLContext)
+    assert ctx.cert_store_stats()["x509_ca"] > 0  # certifi's bundle
