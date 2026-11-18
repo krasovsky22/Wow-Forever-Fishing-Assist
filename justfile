@@ -25,6 +25,10 @@ test:
 build:
     uv run pyinstaller --clean --noconfirm packaging/wowfish.spec
 
+# Windows: build the installer from dist/ into dist/wowfish-setup.exe (after `just build`)
+installer version="0.0.0":
+    pwsh packaging/build_installer.ps1 -Version {{version}}
+
 # Run the built executable the way CI does
 smoke:
     ./dist/wowfish --version

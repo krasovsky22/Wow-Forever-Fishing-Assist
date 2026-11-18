@@ -89,6 +89,14 @@ jobs:
             exit 1
           }
 
+      - name: Build and test installer (Windows)
+        if: runner.os == 'Windows' && matrix.python == '3.12'
+        shell: pwsh
+        run: |
+          $v = uv run python -c "import wowfish; print(wowfish.__version__)"
+          $setup = .\packaging\build_installer.ps1 -Version $v
+          .\packaging\test_installer.ps1 -Installer $setup
+
       - name: Upload executable
         if: matrix.python == '3.12'
         uses: actions/upload-artifact@v7
