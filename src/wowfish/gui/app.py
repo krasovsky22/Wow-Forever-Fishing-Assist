@@ -12,6 +12,8 @@ from wowfish.gui.presenter import Presenter
 from wowfish.gui.setup_page import SetupPage
 from wowfish.gui.updater import Updater
 
+APP_NAME = "Wow Forever - Fishing Assist"
+
 POLL_MS = 50
 
 
@@ -23,7 +25,7 @@ class App:
         _windows_app_id()
         theme.register()
         self.root = tb.Window(
-            themename=theme.THEME, title=f"wowfish {__version__}", minsize=(1000, 760)
+            themename=theme.THEME, title=f"{APP_NAME} {__version__}", minsize=(1000, 760)
         )
         theme.apply_styles(tb.Style())
         self._set_icon()
@@ -31,7 +33,7 @@ class App:
         bar.pack(fill="x")
         if self._icons:
             tb.Label(bar, image=self._icons[1], background=theme.BG).pack(side="left", padx=(0, 10))
-        tb.Label(bar, text="wowfish", style="Brand.TLabel").pack(side="left")
+        tb.Label(bar, text=APP_NAME, style="Brand.TLabel").pack(side="left")
         tb.Label(bar, text=f"  v{__version__}", style="Muted.TLabel").pack(side="left", pady=(6, 0))
         self.reset_button = tb.Button(
             bar, text="Reset settings", command=self._reset_settings, bootstyle="secondary"

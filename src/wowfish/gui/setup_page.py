@@ -258,7 +258,7 @@ class SetupPage:
         on = bool(self.check_updates.get())
         self.p.save_updates(check=on)
         when = "each time the window opens" if on else "only when you click Check for updates"
-        self.keys_note.configure(text=f"Saved: wowfish looks for a new version {when}.")
+        self.keys_note.configure(text=f"Saved: the app looks for a new version {when}.")
 
     def _save_all(self) -> None:
         """Save the keys, then the time limit and recast time; one note says how it went."""

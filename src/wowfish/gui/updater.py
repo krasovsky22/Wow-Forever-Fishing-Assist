@@ -170,7 +170,7 @@ class Updater:
             self.ui.info(
                 "Update installed",
                 f"Version {release.version} is installed, but it could not be started ({e}). "
-                "Open wowfish again to use it.",
+                "Open the app again to use it.",
             )
         self._close_dialog()
         self._on_quit()
