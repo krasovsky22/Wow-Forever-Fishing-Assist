@@ -39,6 +39,11 @@ def log_dir() -> Path:
     return _ensure(home / "log" if home else Path(platformdirs.user_log_dir(APP_NAME)))
 
 
+def data_dir() -> Path:
+    home = _home()
+    return _ensure(home / "data" if home else Path(platformdirs.user_data_dir(APP_NAME)))
+
+
 def config_file() -> Path:
     return config_dir() / "config.toml"
 

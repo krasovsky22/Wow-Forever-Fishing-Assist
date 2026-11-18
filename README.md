@@ -180,6 +180,8 @@ Most settings are on the **Setup** tab. All of them live in one TOML file;
 `wowfish config --path` prints where, and `wowfish config` prints its values. Delete a line to go
 back to its default, or press **Reset settings** (top right of the app) or run
 `wowfish config --reset` to put everything back; the old file is kept as `config.toml.bak`.
+**Create desktop shortcut** (next to Reset settings) puts a shortcut to the app on your desktop
+(a `.lnk` on Windows, a `.desktop` launcher on Linux, a link on macOS).
 
 <p align="center">
   <img src="docs/screenshots/setup-tab.png" alt="The Setup tab: checklist, keys and timing, audio, and gear icon calibration" width="640" />
