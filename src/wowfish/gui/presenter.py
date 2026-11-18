@@ -285,6 +285,18 @@ class Presenter:
             save_config(replace(self.cfg, updates=new))
             self.reload()
 
+    def create_desktop_shortcut(self) -> Path:
+        """Put a shortcut to this app's executable on the desktop (Setup tab). Raises
+        ShortcutError with a plain message, e.g. when running from source."""
+        from wowfish import paths, shortcut
+        from wowfish.update import running_executable
+
+        target = shortcut.gui_target(running_executable())
+        if target is None:
+            raise shortcut.ShortcutError("only the downloaded app can (running from source)")
+        icon = shortcut.saved_icon(paths.data_dir()) if sys.platform.startswith("linux") else None
+        return shortcut.create(target, icon=icon)
+
     def audio_devices(self) -> list[Any]:
         """The game's own audio first (default), then the loopback monitors.
 

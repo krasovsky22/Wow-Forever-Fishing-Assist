@@ -119,6 +119,10 @@ class SetupPage:
             reset_row, text="Reset settings", command=self._reset_settings, bootstyle="secondary"
         )
         self.reset_button.pack(side="right")
+        tb.Button(
+            reset_row, text="Create desktop shortcut", command=self._create_shortcut,
+            bootstyle="secondary",
+        ).pack(side="left")  # fmt: skip
 
         # -- audio ----------------------------------------------------------------------------
         audio, body = theme.card(right, "Audio", "What the bot listens to for the splash.")
@@ -329,6 +333,20 @@ class SetupPage:
     def _save_cal(self) -> None:
         self.p.save_calibration()
         self.cal_note.configure(text=self.cal_note.cget("text") + "  (saved)")
+
+    def _create_shortcut(self) -> None:
+        """Put a shortcut to the app on the desktop; a dialog says where, or why not."""
+        from tkinter import messagebox
+
+        from wowfish.shortcut import ShortcutError
+
+        title = "Create desktop shortcut"
+        try:
+            path = self.p.create_desktop_shortcut()
+        except ShortcutError as e:
+            messagebox.showerror(title, f"Could not make the shortcut: {e}", parent=self.frame)
+            return
+        messagebox.showinfo(title, f"Shortcut created:\n{path}", parent=self.frame)
 
     def _reset_settings(self) -> None:
         """Ask, then put every setting back to its default; the old file is kept as a .bak."""

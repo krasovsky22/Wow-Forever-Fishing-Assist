@@ -1001,3 +1001,73 @@ def test_titlebar_dark_frame_is_a_noop_off_windows(monkeypatch):
 
     monkeypatch.setattr(titlebar.sys, "platform", "linux")
     titlebar.dark_frame(object())  # touches nothing on the window
+
+
+def test_desktop_shortcut_target_prefers_the_gui(tmp_path):
+    from wowfish import shortcut
+
+    assert shortcut.gui_target(None) is None  # running from source
+    gui = tmp_path / "wowfish-gui.exe"
+    assert shortcut.gui_target(gui, windows=True) == shortcut.Target(gui)
+    cli = tmp_path / "wowfish.exe"
+    assert shortcut.gui_target(cli, windows=True) == shortcut.Target(cli, ("gui",))
+    gui.write_bytes(b"")
+    assert shortcut.gui_target(cli, windows=True) == shortcut.Target(gui)
+
+
+def test_desktop_shortcut_on_linux_and_macos(tmp_path, monkeypatch):
+    from wowfish import shortcut
+
+    monkeypatch.setattr(shortcut, "_trust_on_gnome", lambda _p: None)
+    exe = tmp_path / "my apps" / "wowfish"
+    exe.parent.mkdir()
+    exe.write_bytes(b"")
+    desktop = tmp_path / "Desktop"
+    desktop.mkdir()
+    target = shortcut.Target(exe, ("gui",))
+
+    path = shortcut.create(target, desktop, platform="linux", icon=tmp_path / "icon.png")
+    text = path.read_text(encoding="utf-8")
+    assert f'Exec="{exe}" gui\n' in text and f"Icon={tmp_path / 'icon.png'}" in text
+    assert path.stat().st_mode & 0o111
+    assert shortcut.create(target, desktop, platform="linux") == path  # overwrites
+
+    link = shortcut.create(target, desktop, platform="darwin")
+    assert link.is_symlink() and link.resolve() == exe.resolve()
+    assert shortcut.create(target, desktop, platform="darwin") == link  # replaces the link
+
+    try:
+        shortcut.create(target, tmp_path / "nowhere", platform="linux")
+    except shortcut.ShortcutError as e:
+        assert "no desktop folder" in str(e)
+    else:
+        raise AssertionError("a missing desktop was accepted")
+
+
+def test_desktop_entry_quotes_exec_arguments():
+    from wowfish.shortcut import _desktop_quote
+
+    assert _desktop_quote("/opt/wowfish") == "/opt/wowfish"
+    assert _desktop_quote("/a b/100%") == '"/a b/100%%"'
+    assert _desktop_quote('/a "b"') == '"/a \\\\"b\\\\""'
+
+
+def test_desktop_shortcut_from_source_is_refused(tmp_path, monkeypatch):
+    from wowfish.shortcut import ShortcutError
+
+    monkeypatch.setenv("WOWFISH_HOME", str(tmp_path))
+    p = Presenter(build_engine=lambda *a, **k: None, list_devices=lambda: [],
+                  find_window=lambda *a: None)  # fmt: skip
+    try:
+        p.create_desktop_shortcut()
+    except ShortcutError as e:
+        assert "running from source" in str(e)
+    else:
+        raise AssertionError("a shortcut was made with no executable")
+
+
+def test_desktop_shortcut_icon_is_copied_out_of_the_bundle(tmp_path):
+    from wowfish.shortcut import saved_icon
+
+    icon = saved_icon(tmp_path)
+    assert icon is not None and icon.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
