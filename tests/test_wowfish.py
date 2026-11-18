@@ -985,3 +985,19 @@ def test_reset_settings(tmp_path, monkeypatch):
         assert "stop fishing" in str(e)
     else:
         raise AssertionError("reset while fishing was allowed")
+
+
+def test_titlebar_colorref_is_bgr():
+    from wowfish.gui import theme, titlebar
+
+    assert titlebar.colorref("#112233") == 0x332211
+    colors = titlebar.frame_colors()
+    assert colors[titlebar.DWMWA_CAPTION_COLOR] == titlebar.colorref(theme.BG)
+    assert colors[titlebar.DWMWA_BORDER_COLOR] == titlebar.colorref(theme.CARD_EDGE)
+
+
+def test_titlebar_dark_frame_is_a_noop_off_windows(monkeypatch):
+    from wowfish.gui import titlebar
+
+    monkeypatch.setattr(titlebar.sys, "platform", "linux")
+    titlebar.dark_frame(object())  # touches nothing on the window

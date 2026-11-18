@@ -10,6 +10,7 @@ from wowfish.gui.fish_page import FishPage
 from wowfish.gui.overlay import MiniBar
 from wowfish.gui.presenter import Presenter
 from wowfish.gui.setup_page import SetupPage
+from wowfish.gui.titlebar import dark_frame
 from wowfish.gui.updater import Updater
 
 APP_NAME = "Wow Forever - Fishing Assist"
@@ -28,6 +29,7 @@ class App:
             themename=theme.THEME, title=f"{APP_NAME} {__version__}", minsize=(1000, 760)
         )
         theme.apply_styles(tb.Style())
+        dark_frame(self.root)
         self._set_icon()
         bar = tb.Frame(self.root, padding=(16, 12, 16, 0))
         bar.pack(fill="x")

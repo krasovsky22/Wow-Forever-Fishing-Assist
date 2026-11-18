@@ -18,6 +18,7 @@ from loguru import logger
 
 from wowfish import __version__, update
 from wowfish.gui import theme
+from wowfish.gui.titlebar import dark_frame
 
 STARTUP_DELAY_MS = 1500  # let the window draw first
 NOTES_MAX_CHARS = 4000
@@ -247,6 +248,7 @@ class UpdateDialog:
         self.win.title("Update available")
         self.win.transient(root)
         self.win.resizable(False, False)
+        dark_frame(self.win)
         self.win.protocol("WM_DELETE_WINDOW", updater.later)
         body = tb.Frame(self.win, padding=20)
         body.pack(fill="both", expand=True)
