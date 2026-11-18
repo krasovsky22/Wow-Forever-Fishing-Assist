@@ -41,7 +41,8 @@ this automatically.
                     optional behavior variations, thread
       gui/          Tk-free Presenter (engine thread + setup workers), ttkbootstrap window and pages
     scripts/        release preflight, clip conversion (ffmpeg, dev only)
-    packaging/      PyInstaller spec (console `wowfish` and windowed `wowfish-gui`)
+    packaging/      PyInstaller spec (console `wowfish` and windowed `wowfish-gui`), Inno Setup
+                    installer script for Windows (wowfish.iss) and its build/test scripts
     tests/          unit tests, synthetic frame/audio helpers, tests/fixtures/
 
 ## Branches and releases

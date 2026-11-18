@@ -86,6 +86,12 @@ Tagged releases (`v*`) build single-file executables for Windows 10/11 (x86_64),
 Silicon) and Linux (x86_64), with a `SHA256SUMS.txt` to check them against. Get them from
 [Releases](https://github.com/krasovsky22/Wow-Forever-Fishing-Assist/releases).
 
+**Windows installer:** `wowfish-setup-<version>-windows-x86_64.exe` installs the app for your
+user into `%LOCALAPPDATA%\Programs\WoW Forever Fishing Assist` (no admin prompt), adds it to the
+Start menu, and puts a shortcut on the desktop (untick *Create a desktop shortcut* to skip it).
+Run a newer installer to upgrade, and remove it from *Settings > Apps*. Your settings are kept
+either way. The standalone `.exe` files are still there if you prefer no install.
+
 They are not code-signed, so the first launch needs one extra step:
 
 - **Windows:** SmartScreen says "Windows protected your PC". Click *More info*, then *Run anyway*.
@@ -231,6 +237,7 @@ uv sync --group dev
 uv run pytest                                  # unit tests: no screen, audio or network needed
 uv run ruff check . && uv run ruff format --check .
 uv run pyinstaller --clean --noconfirm packaging/wowfish.spec   # build the executables
+pwsh packaging/build_installer.ps1 -Version 0.0.0             # Windows: build dist/wowfish-setup.exe
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the layout of the code.

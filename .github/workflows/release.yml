@@ -116,6 +116,18 @@ jobs:
           Move-Item dist\wowfish.exe "dist\wowfish-$v-${{ matrix.target }}.exe"
           Move-Item dist\wowfish-gui.exe "dist\wowfish-gui-$v-${{ matrix.target }}.exe"
 
+      - name: Build and test installer (Windows)
+        # Installs into %LOCALAPPDATA%\Programs with a desktop shortcut; see packaging/wowfish.iss.
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $v = $env:RELEASE_TAG.TrimStart("v")
+          $t = "${{ matrix.target }}"
+          $setup = .\packaging\build_installer.ps1 -Version $v `
+            -GuiExe "dist\wowfish-gui-$v-$t.exe" -CliExe "dist\wowfish-$v-$t.exe" `
+            -OutputBaseName "wowfish-setup-$v-$t"
+          .\packaging\test_installer.ps1 -Installer $setup
+
       - uses: actions/upload-artifact@v7
         with:
           name: release-${{ matrix.target }}
