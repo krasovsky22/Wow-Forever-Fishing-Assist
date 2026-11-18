@@ -16,6 +16,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 import tomlkit
 from loguru import logger
 from typer.testing import CliRunner
@@ -1015,6 +1016,7 @@ def test_desktop_shortcut_target_prefers_the_gui(tmp_path):
     assert shortcut.gui_target(cli, windows=True) == shortcut.Target(gui)
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX paths and symlinks")
 def test_desktop_shortcut_on_linux_and_macos(tmp_path, monkeypatch):
     from wowfish import shortcut
 
