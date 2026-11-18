@@ -8,7 +8,7 @@
 It watches for your bobber, listens for the splash, and loots the catch.</p>
 
 <p>
-  <a href="https://github.com/krasovsky22/WowFishingAssist/actions/workflows/ci.yml"><img src="https://github.com/krasovsky22/WowFishingAssist/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/krasovsky22/Wow-Forever-Fishing-Assist/actions/workflows/ci.yml"><img src="https://github.com/krasovsky22/Wow-Forever-Fishing-Assist/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-e6b751.svg" alt="License: MIT" /></a>
   <img src="https://img.shields.io/badge/python-3.12%2B-4aa3df.svg" alt="Python 3.12+" />
   <img src="https://img.shields.io/badge/platforms-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-3fb68b.svg" alt="Windows, macOS, Linux" />
@@ -67,8 +67,8 @@ It watches for your bobber, listens for the splash, and loots the catch.</p>
 You need [uv](https://docs.astral.sh/uv/) (it installs the right Python for you) and Git.
 
 ```bash
-git clone https://github.com/krasovsky22/WowFishingAssist.git
-cd WowFishingAssist
+git clone https://github.com/krasovsky22/Wow-Forever-Fishing-Assist.git
+cd Wow-Forever-Fishing-Assist
 uv sync --group dev
 uv run wowfish doctor   # checks this machine
 uv run wowfish gui      # opens the app
@@ -83,7 +83,7 @@ Then [set up the game](#set-up-the-game) once, stand at the water, and press **S
 
 Tagged releases (`v*`) build single-file executables for Windows 10/11 (x86_64), macOS (Apple
 Silicon) and Linux (x86_64), with a `SHA256SUMS.txt` to check them against. Get them from
-[Releases](https://github.com/krasovsky22/WowFishingAssist/releases).
+[Releases](https://github.com/krasovsky22/Wow-Forever-Fishing-Assist/releases).
 
 They are not code-signed, so the first launch needs one extra step:
 
