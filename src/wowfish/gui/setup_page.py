@@ -101,9 +101,17 @@ class SetupPage:
             command=self._save_mini_bar,
             style="Card.TCheckbutton",
         ).grid(row=4, column=0, columnspan=3, sticky="w", pady=(10, 0))
+        self.check_updates = tk.BooleanVar(value=presenter.cfg.updates.check)
+        tb.Checkbutton(
+            body,
+            text="Check for updates when the window opens",
+            variable=self.check_updates,
+            command=self._save_check_updates,
+            style="Card.TCheckbutton",
+        ).grid(row=5, column=0, columnspan=3, sticky="w", pady=(6, 0))
         self.keys_note = self.limit_note = self.recast_note = note(body, RECAST_HINT)
         self.keys_note.configure(wraplength=360)
-        self.keys_note.grid(row=5, column=0, columnspan=3, sticky="w", pady=(8, 0))
+        self.keys_note.grid(row=6, column=0, columnspan=3, sticky="w", pady=(8, 0))
 
         # -- audio ----------------------------------------------------------------------------
         audio, body = theme.card(right, "Audio", "What the bot listens to for the splash.")
@@ -199,6 +207,7 @@ class SetupPage:
         self.minutes.set(cfg.game.session_minutes)
         self.recast.set(f"{cfg.run.cast_timeout_s:g}")
         self.mini_bar.set(cfg.gui.mini_bar)
+        self.check_updates.set(cfg.updates.check)
         self._pick_device()
         self.keys_note.configure(text=RECAST_HINT)
         size = cfg.vision.icon_size_px
@@ -244,6 +253,12 @@ class SetupPage:
         self.p.save_mini_bar(on)
         bar = "a mini bar over the game" if on else "the main window"
         self.keys_note.configure(text=f"Saved: from the next Start, fishing shows {bar}.")
+
+    def _save_check_updates(self) -> None:
+        on = bool(self.check_updates.get())
+        self.p.save_updates(check=on)
+        when = "each time the window opens" if on else "only when you click Check for updates"
+        self.keys_note.configure(text=f"Saved: wowfish looks for a new version {when}.")
 
     def _save_all(self) -> None:
         """Save the keys, then the time limit and recast time; one note says how it went."""

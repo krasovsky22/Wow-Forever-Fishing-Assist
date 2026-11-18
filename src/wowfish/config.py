@@ -98,6 +98,12 @@ class GuiConfig:
 
 
 @dataclass(frozen=True)
+class UpdatesConfig:
+    check: bool = True  # look for a newer release when the window opens
+    skipped_version: str = ""  # a release the user chose to skip; newer ones are offered again
+
+
+@dataclass(frozen=True)
 class Config:
     game: GameConfig
     vision: VisionConfig
@@ -105,6 +111,7 @@ class Config:
     run: RunConfig = field(default_factory=RunConfig)
     behavior: BehaviorConfig = field(default_factory=BehaviorConfig)
     gui: GuiConfig = field(default_factory=GuiConfig)
+    updates: UpdatesConfig = field(default_factory=UpdatesConfig)
 
 
 _SECTIONS: dict[str, type] = {
@@ -114,6 +121,7 @@ _SECTIONS: dict[str, type] = {
     "run": RunConfig,
     "behavior": BehaviorConfig,
     "gui": GuiConfig,
+    "updates": UpdatesConfig,
 }
 
 

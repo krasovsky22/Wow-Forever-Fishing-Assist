@@ -10,6 +10,7 @@ from wowfish.gui.fish_page import FishPage
 from wowfish.gui.overlay import MiniBar
 from wowfish.gui.presenter import Presenter
 from wowfish.gui.setup_page import SetupPage
+from wowfish.gui.updater import Updater
 
 POLL_MS = 50
 
@@ -36,6 +37,10 @@ class App:
             bar, text="Reset settings", command=self._reset_settings, bootstyle="secondary"
         )
         self.reset_button.pack(side="right", pady=(4, 0))
+        self.update_button = tb.Button(
+            bar, text="Check for updates", command=self._check_updates, bootstyle="secondary"
+        )
+        self.update_button.pack(side="right", padx=(0, 8), pady=(4, 0))
         nb = tb.Notebook(self.root)
         nb.pack(fill="both", expand=True, padx=12, pady=(8, 12))
         self.setup = SetupPage(nb, self.p)
@@ -47,7 +52,12 @@ class App:
         self.root.protocol("WM_DELETE_WINDOW", self.close)
         self.bar: MiniBar | None = None
         self._was_running = False
+        self.updater = Updater(self.root, self.p, on_quit=self.close)
+        self.updater.start()
         self._after = self.root.after(POLL_MS, self._tick)
+
+    def _check_updates(self) -> None:
+        self.updater.check(asked=True)
 
     def _set_icon(self) -> None:
         """The logo in the title bar and taskbar, for this window and the ones it opens.
@@ -72,6 +82,11 @@ class App:
             self._fishing_stopped()
         self._was_running = view.running
         self.reset_button.configure(state="disabled" if view.running else "normal")
+        self.updater.poll()
+        if self.root is None:  # the updater closed the app to restart it
+            return
+        busy = view.running or self.updater.busy
+        self.update_button.configure(state="disabled" if busy else "normal")
         if self.bar is not None:
             self.bar.render(view.state, view.did, view.stats_values)
 
@@ -129,7 +144,8 @@ class App:
         try:
             self.tick()
         finally:
-            self._after = self.root.after(POLL_MS, self._tick)
+            if self.root is not None:  # None once the app closed itself (an update restart)
+                self._after = self.root.after(POLL_MS, self._tick)
 
     def run(self) -> None:
         try:

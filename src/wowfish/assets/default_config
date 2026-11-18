@@ -77,3 +77,9 @@ jump_key = "space"
 # While fishing, hide the main window behind the game and show a small bar over it with the
 # state, the numbers, Stop, and Open. false = keep the main window as it is.
 mini_bar = true
+
+[updates]
+# Look for a newer release when the window opens, and offer to install it.
+check = true
+# A release you chose to skip ("1.2.0"). Newer releases are offered again. Empty = none.
+skipped_version = ""
