@@ -52,6 +52,7 @@ It watches for your bobber, listens for the splash, and loots the catch.</p>
 - ⏲️ **Session limit**, optionally followed by a `/quit` macro to close the game.
 - 🎲 **Optional variation**: breaks, reaction delay, skipped bites, uneven key holds and
   random jumps. All off by default.
+- ⬆️ **Updates itself.** On opening, it offers new releases and installs them in one click.
 
 **Tuning and diagnostics**
 - 🩺 `wowfish doctor` checks the display, audio, game window, input and config.
@@ -91,6 +92,14 @@ They are not code-signed, so the first launch needs one extra step:
 - **macOS:** run `xattr -d com.apple.quarantine wowfish-*` once (and `chmod +x wowfish-*` if
   needed). On Intel Macs, run from source instead.
 - **Linux:** `chmod +x wowfish-*`.
+
+**Updates:** when the app opens, it checks Releases for a newer version and offers to install it.
+**Update now** downloads the new file, checks it against `SHA256SUMS.txt`, swaps it in place of
+the running file (same name and folder, so shortcuts keep working) and restarts. **Skip this
+version** stops asking until a newer release. You can also click **Check for updates**, turn the
+check off on the Setup tab, or run `wowfish update` from the terminal. If the file can't be
+replaced (for example in a protected folder like `Program Files`), the app opens the download
+page instead. Settings are kept, because they live in the config folder, not next to the file.
 
 </details>
 
@@ -182,6 +191,8 @@ back to its default, or press **Reset settings** (top right of the app) or run
 | `audio.bite_threshold` | `0.66` | How well a sound must match a splash to count as a bite. The Setup tab's bite check suggests a value. |
 | `audio.capture` | `"game"` | `"game"` hears only WoW; `"device"` hears the loopback device in `audio.device`. |
 | `gui.mini_bar` | `true` | While fishing, show the small bar over the game. `false` keeps the main window instead. |
+| `updates.check` | `true` | Look for a newer release when the app opens. |
+| `updates.skipped_version` | `""` | A release you chose to skip; it is not offered again, newer ones are. |
 | `[behavior]` | all off | Breaks, reaction delay, skipped bites, key-hold jitter and random jumps. See the comments in the file. |
 
 ## Commands
@@ -196,6 +207,7 @@ back to its default, or press **Reset settings** (top right of the app) or run
 | `wowfish listen [--list] [--device D] [--record WAV]` | Meter the game's audio and print bites as they are heard. |
 | `wowfish verify-bite WAV [--save]` | Score a recording against every splash clip and suggest a threshold. |
 | `wowfish config [--path] [--reset]` | Create the config file if needed and print it, print only its location, or reset every setting (keeping a `.bak`). |
+| `wowfish update [--check] [--yes]` | Install the newest release over this executable, or with `--check` only say whether there is one. |
 | `wowfish --version` | Print the version. |
 
 Add `--verbose` before any command for debug logging; `wowfish doctor` prints the log file's

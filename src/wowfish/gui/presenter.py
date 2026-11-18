@@ -272,6 +272,19 @@ class Presenter:
             save_config(replace(self.cfg, gui=replace(self.cfg.gui, mini_bar=on)))
             self.reload()
 
+    def save_updates(self, check: bool | None = None, skipped_version: str | None = None) -> None:
+        """Save updates.check (Setup tab) or updates.skipped_version ("Skip this version")."""
+        self.reload()
+        u = self.cfg.updates
+        new = replace(
+            u,
+            check=u.check if check is None else check,
+            skipped_version=u.skipped_version if skipped_version is None else skipped_version,
+        )
+        if new != u:
+            save_config(replace(self.cfg, updates=new))
+            self.reload()
+
     def audio_devices(self) -> list[Any]:
         """The game's own audio first (default), then the loopback monitors.
 
