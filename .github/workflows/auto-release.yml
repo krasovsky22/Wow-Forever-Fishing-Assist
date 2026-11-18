@@ -1,0 +1,70 @@
+name: Auto release
+
+# Every merge (or push) to master bumps the minor version of the newest stable tag
+# (v1.0.0 -> v1.1.0), pushes the tag, and runs release.yml for it as a published release.
+on:
+  push:
+    branches: [master]
+
+# Two quick merges must not compute the same next version.
+concurrency:
+  group: auto-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-22.04
+    outputs:
+      tag: ${{ steps.next.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0  # need every tag to find the latest version
+
+      - id: next
+        shell: bash
+        run: |
+          # A commit that is already tagged (e.g. a manual `git push origin v...`) is
+          # released by the tag trigger in release.yml instead.
+          if existing=$(git tag --points-at HEAD --list 'v*' | head -n1) && [ -n "$existing" ]; then
+            echo "HEAD is already tagged $existing; skipping."
+            exit 0
+          fi
+
+          # Newest stable vX.Y.Z; prerelease tags (a/b/rc) are ignored.
+          latest=$(git tag --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1)
+          latest=${latest:-v0.0.0}
+          IFS=. read -r major minor _ <<< "${latest#v}"
+          tag="v${major}.$((minor + 1)).0"
+
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "::error::Tag $tag already exists on another commit."
+            exit 1
+          fi
+
+          echo "Bumping $latest -> $tag"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Push tag
+        if: steps.next.outputs.tag != ''
+        env:
+          TAG: ${{ steps.next.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+  # A tag pushed with GITHUB_TOKEN does not trigger other workflows, so call release.yml directly.
+  release:
+    needs: tag
+    if: needs.tag.outputs.tag != ''
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.tag.outputs.tag }}
+      publish: true
+    permissions:
+      contents: write

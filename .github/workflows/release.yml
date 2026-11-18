@@ -3,9 +3,24 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  # Called by auto-release.yml after it pushes a tag on merge to master.
+  workflow_call:
+    inputs:
+      tag:
+        description: Tag to build and release, e.g. v1.1.0
+        type: string
+        required: true
+      publish:
+        description: Publish the release instead of leaving it as a draft
+        type: boolean
+        default: false
 
 permissions:
   contents: write
+
+env:
+  # Manual tag pushes use the pushed ref; workflow_call passes the tag explicitly.
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 
 jobs:
   preflight:
@@ -15,6 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.tag || github.ref }}
           fetch-depth: 0  # hatch-vcs derives the version from tags
       - uses: astral-sh/setup-uv@v10.3.3
         with:
@@ -43,6 +59,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.tag || github.ref }}
           fetch-depth: 0  # hatch-vcs derives the version from tags
       - uses: astral-sh/setup-uv@v10.3.3
         with:
@@ -83,8 +100,8 @@ jobs:
           ./dist/wowfish --version
           ./dist/wowfish doctor
           ./dist/wowfish-gui --version
-          mv dist/wowfish "dist/wowfish-${GITHUB_REF_NAME#v}-${{ matrix.target }}"
-          mv dist/wowfish-gui "dist/wowfish-gui-${GITHUB_REF_NAME#v}-${{ matrix.target }}"
+          mv dist/wowfish "dist/wowfish-${RELEASE_TAG#v}-${{ matrix.target }}"
+          mv dist/wowfish-gui "dist/wowfish-gui-${RELEASE_TAG#v}-${{ matrix.target }}"
 
       - name: Smoke and rename (Windows)
         # wowfish-gui.exe is a windowed app: PowerShell only waits for it (and sets
@@ -95,7 +112,7 @@ jobs:
           .\dist\wowfish.exe --version; if ($LASTEXITCODE) { exit $LASTEXITCODE }
           .\dist\wowfish.exe doctor;    if ($LASTEXITCODE) { exit $LASTEXITCODE }
           .\dist\wowfish-gui.exe --version | Out-Host; if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          $v = $env:GITHUB_REF_NAME.TrimStart("v")
+          $v = $env:RELEASE_TAG.TrimStart("v")
           Move-Item dist\wowfish.exe "dist\wowfish-$v-${{ matrix.target }}.exe"
           Move-Item dist\wowfish-gui.exe "dist\wowfish-gui-$v-${{ matrix.target }}.exe"
 
@@ -120,7 +137,9 @@ jobs:
         run: cd dist && sha256sum wowfish-* > SHA256SUMS.txt && cat SHA256SUMS.txt
       - uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
           files: dist/*
           generate_release_notes: true
-          draft: true
+          # Manual tag pushes stay drafts; auto releases are published so self-update sees them.
+          draft: ${{ !inputs.publish }}
           prerelease: ${{ needs.preflight.outputs.prerelease == 'true' }}
